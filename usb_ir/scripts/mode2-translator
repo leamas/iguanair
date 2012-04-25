@@ -1,0 +1,245 @@
+#!/usr/bin/python -tt
+from __future__ import with_statement
+import optparse
+import sys
+import os
+import re
+import struct
+
+import iguanaIR
+
+#output "constants"
+LOG_FATAL  = 0
+LOG_ERROR  = 1
+LOG_WARN   = 2
+LOG_ALWAYS = 2.5
+LOG_NORMAL = 3
+LOG_INFO   = 4
+LOG_DEBUG  = 5
+
+msgPrefixes = [
+    "FATAL: ",
+    "ERROR: ",
+    "WARNING: ",
+    "",
+    "INFO: ",
+    "DEBUG: "
+]
+
+#local variables
+null = open(os.devnull, 'r+')
+parser = optparse.OptionParser()
+options = None
+
+def dieCleanly(level = None):
+    """Exit the application with proper cleanup."""
+
+    #TODO: perform application cleanup
+
+    if level == None:
+        level = LOG_ERROR
+
+    #exit with appropriate value
+    if level == LOG_FATAL:
+        sys.exit(1)
+    sys.exit(0)
+
+
+def message(level, msg):
+    global options
+    """Print a message to a certain debug level"""
+    retval = None
+
+    if level <= options.logLevel or level == LOG_ALWAYS:
+        out = sys.stdout
+
+        # if logfile is open print to it instead
+        if options.logFile == "-":
+            out = sys.log
+        elif level <= LOG_WARN:
+            out = sys.stderr
+
+        retval = msgPrefixes[int(level + 0.5)] + msg
+        out.write(retval)
+        retval = len(retval)
+
+    if level <= LOG_FATAL:
+        dieCleanly(level)
+
+    return retval
+
+def printUsage(msg = None):
+    global parser
+    if msg != None:
+        message(LOG_FATAL, msg + parser.get_usage())
+    message(LOG_ALWAYS, usage)
+    dieCleanly(LOG_ALWAYS)
+
+def parseOptions():
+    global parser, options
+    parser.add_option('-l', '--log-file',
+                      metavar = 'FILE', dest = 'logFile',
+                      help = 'Specify a log to receive all messages.')
+    parser.add_option('--collect',
+                      action = 'store_true',
+                      help = 'Connect to a device and listen for signals.')
+    parser.add_option('-d', '--device',
+                      metavar = 'ID', default = '0',
+                      help = 'Only useful with the --live option to connect to a specific device.')
+    parser.add_option('--no-raw-signals',
+                      action = 'store_false',
+                      default = True, dest = 'raw_signals',
+                      help = 'Do not print the signals as they are collected.')
+    parser.add_option('--keep-one',
+                      action = 'store_true', dest = 'one',
+                      help = 'Just print a single signal in --send format.')
+    parser.add_option('-s', '--source-file',
+                      metavar = 'FILE', dest = 'srcFile',
+                      help = 'Specify a file containing igclient output.')
+    parser.add_option('-g', '--gap',
+                      type = 'int', dest = 'gap',
+                      help = 'Length of the gap in microseconds.')
+    parser.add_option('-q', '--quiet',
+                      action = 'count',
+                      help = 'Decrease verbosity.')
+    parser.add_option('-v', '--verbose',
+                      action = 'count',
+                      help = 'Increase verbosity.')
+    (options, leftover) = parser.parse_args()
+    options.logLevel = LOG_NORMAL;
+    if options.verbose:
+        options.logLevel += options.verbose
+    if options.quiet:
+        options.logLevel -= options.quiet
+        if options.logLevel <= LOG_FATAL:
+            options.logLevel = LOG_FATAL
+    if options.logFile == '-':
+        options.logFile = None
+    if leftover:
+        printUsage("Unknown argument: " + leftover[0] + "\n")
+
+def collectLiveSignals(device):
+    results = []
+
+    conn = iguanaIR.connect(device)
+    if conn == -1:
+        message(LOG_FATAL, "Failed to connect to the device.\n")
+
+    req = iguanaIR.createRequest(iguanaIR.IG_DEV_RECVON)
+    if not iguanaIR.writeRequest(req, conn):
+        message(LOG_FATAL, "Failed to turn on the device's receiver.\n")
+    response = iguanaIR.readResponse(conn, 1000);
+    if iguanaIR.responseIsError(response):
+        message(LOG_ERROR, "Error reading response from device.\n")
+
+    try:
+        message(LOG_NORMAL, "This program will now collect signals from USB device %s.  Press ctrl-c to stop and reformat these signals.\n" % device)
+
+        while True:
+            response = iguanaIR.readResponse(conn, 1000);
+            if iguanaIR.responseIsError(response):
+                message(LOG_ERROR, "Error reading signals from device.\n")
+                break
+
+            data = iguanaIR.removeData(response)
+            if options.raw_signals:
+                message(LOG_NORMAL,
+                        'received %d signal(s):\n' % (len(data) / 4))
+            for signal in struct.unpack('I' * (len(data) / 4), data):
+                kind = 'space'
+                if signal & iguanaIR.IG_PULSE_BIT:
+                    kind = 'pulse'
+                result = '%s: %d\n' % (kind, signal & iguanaIR.IG_PULSE_MASK)
+                if options.raw_signals:
+                    message(LOG_NORMAL, result)
+                results.append(result)
+    except KeyboardInterrupt:
+        message(LOG_NORMAL, 'Formatting collected signals....\n')
+
+    return results
+
+def parseSignals(input):
+    signals = [[]]
+    prevType = None
+    prevLen = 0
+    for line in input:
+        line = line.strip()
+        if re.match('received \d+ signal\(s\):', line) or \
+           line == 'receiver on: success':
+            continue
+
+        (stype, length) = line.split(': ')
+        if prevType == stype:
+            prevLen += int(length)
+        else:
+            # record the signals discarding leading spaces
+            if prevLen and \
+               (len(signals[-1]) > 0 or prevType != 'space'):
+                message(LOG_DEBUG, '%s %s\n' % (prevType, prevLen))
+                if options.gap and \
+                   prevType == 'space' and prevLen > options.gap:
+                    signals.append([])
+                else:
+                    signals[-1].append(prevLen)
+            prevLen = int(length)
+        prevType = stype
+
+    if prevType != 'space':
+        signals[-1].append(prevLen)
+        message(LOG_DEBUG, '%s %s\n' % (prevType, prevLen))
+
+    return signals
+
+parseOptions()
+# open the log file if specified
+if options.logFile != None:
+    sys.log = open(options.logFile, "a", 1)
+    options.logFile = "-"
+
+if not options.srcFile and not options.collect:
+    message(LOG_NORMAL, "No source file specified on the command line.  Defaulting to live collection\n")
+    options.collect = True
+
+if options.collect:
+    input = collectLiveSignals(options.device)
+else:
+    input = open(options.srcFile, 'r')
+
+signals = parseSignals(input)
+
+# some people just want the first signal in --send format
+if options.one:
+    signals[1:] = []
+signals[10:] = []
+
+# find the max length signal
+length = 0
+for signal in signals:
+    if len(signal) > length:
+        length = len(signal)
+
+text = ''
+# print a header only if we need it
+if len(signals) > 1:
+    text += 'action '
+    parts = []
+    for x in range(len(signals)):
+        parts.append('signal%d' % x)
+    text += ' | '.join(parts) + '\n'
+
+    text += re.sub('[^|]', '-', text).replace('|', '+') + '\n'
+
+# print in a nice format
+for x in range(length):
+    if x % 2 == 0:
+        text += 'pulse  '
+    else:
+        text += 'space  '
+
+    parts = []
+    for signal in signals:
+        if len(signal) > x:
+            parts.append('%6d' % signal[x])
+    text += '  | '.join(parts) + '\n'
+
+message(LOG_NORMAL, text)
