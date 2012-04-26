@@ -57,7 +57,7 @@
     /* defines for dealing with the file system and libraries */
     #define PATH_MAX MAX_PATH
     #define PATH_SEP '\\'
-    #define DYNLIB_EXT ".dll"
+    #define DYNLIB_EXT "dll"
     typedef HANDLE DIR_HANDLE;
 
     /* functions to dynamically load drivers */
@@ -102,10 +102,8 @@
     #define PATH_SEP '/'
     #if __APPLE__
         #define SwitchToThread() pthread_yield_np()
-        #define DYNLIB_EXT ".dylib"
     #else
         #define SwitchToThread() pthread_yield()
-        #define DYNLIB_EXT ".so"
     #endif
     typedef DIR* DIR_HANDLE;
 
@@ -122,3 +120,4 @@ char* translateError(int errnum);
 DIR_HANDLE findNextFile(DIR_HANDLE hFind, char *buffer);
 
 #endif
+

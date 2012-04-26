@@ -5,40 +5,43 @@ subdirs = @subdirs@
 top_srcdir = @top_srcdir@
 srcdir = @srcdir@
 prefix = @prefix@
+libdirname = @libdirname@
 exec_prefix = @exec_prefix@
-bindir = $(exec_prefix)/bin
-infodir = $(prefix)/info
-libdir = $(prefix)/lib/gnudl
-mandir = $(prefix)/man/man1
+bindir = @bindir@
+libdir = @libdir@
+datarootdir = @datarootdir@
+infodir = $(datarootdir)/info
+mandir = $(datarootdir)/man/man1
 builddir = $(shell pwd)
 
 CC = @CC@
 CPPFLAGS = @CPPFLAGS@
-CFLAGS = @CFLAGS@ -fpic
+CFLAGS = @CFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
 
-SHAREEXT = so
-LIBNAME=libiguanaIR.$(SHAREEXT).0
-SHAREARG = -shared
-ifeq ($(shell uname -m),x86_64)
-  LIBDIR  = lib64
+IGUANAIR=iguanaIR
+
+DYNLIB_EXT = @DYNLIB_EXT@
+DYNMOD_EXT = @DYNMOD_EXT@
+
+PYTHON_DYNMOD_EXT = $(DYNMOD_EXT)
+
+LIBNAME=lib$(IGUANAIR).$(DYNLIB_EXT).0
+
+ifeq ($(shell uname -s),Darwin)
+   DARWIN = 1
+   PATH = $(shell getconf PATH):/usr/local/bin:/opt/local/bin:/sw/bin
+   export PATH
+   DAEMON_LDFLAGS += -framework CoreFoundation -framework IOKit
+   DYNLIB_FLAGS = -dynamiclib
+   PYTHON_DYNMOD_EXT = so
+   OSSUPPORT = osx/daemonosx.o
 else
-  LIBDIR  = lib
-
-  ifeq ($(shell uname -s),Darwin)
-    DARWIN = 1
-    PATH = $(shell getconf PATH):/usr/local/bin:/opt/local/bin:/sw/bin
-    export PATH
-    LIBDIR  = lib
-    CFLAGS += -fPIC
-    CPPFLAGS += -I/usr/local/include -I/usr/include -I/opt/local/include -I/sw/include
-    LDFLAGS += -L/usr/local/lib -L/usr/lib -L/opt/local/lib -L/sw/lib -framework CoreFoundation -framework IOKit
-    # Python needs .so but library should be .dylib
-    #SHAREEXT = dylib
-    LIBNAME=libiguanaIR.dylib
-    SHAREARG = -dynamiclib
-    OSSUPPORT = osx/daemonosx.o
-  endif
+    CFLAGS += -fpic
+    DYNLIB_FLAGS = -shared
 endif
+

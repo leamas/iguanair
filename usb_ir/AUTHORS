@@ -4,5 +4,8 @@ This device and driver brought to you by Iguanaworks Inc.
 Linux driver, tools, and recent firmware:
   Joseph Dunn <jdunn@iguanaworks.net>
 
+OSX (re-)port and various contributions:
+  Yves Arrouye
+
 Original device firmware:
   Brian Shucker <shucker@iguanaworks.net>

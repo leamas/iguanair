@@ -1,8 +1,6 @@
 /****************************************************************************
- ** daemon.h ****************************************************************
+ ** server.c ****************************************************************
  ****************************************************************************
- *
- * Header included ONLY in daemon.c/service.c
  *
  * Copyright (C) 2009, IguanaWorks Incorporated (http://iguanaworks.net)
  * Author: Joseph Dunn <jdunn@iguanaworks.net>
@@ -11,7 +9,11 @@
  * See LICENSE for license details.
  */
 
+#include <stdlib.h>
+#ifdef HAVE_MALLOC_H
 #include <malloc.h>
+#endif
+#include <sys/param.h>
 
 #include "iguanaIR.h"
 #include "compat.h"
@@ -24,7 +26,7 @@
 /* global server settings are grouped togther */
 serverSettings srvSettings;
 
-static usbId ids[] = {
+usbId iguanaUsbIds[] = {
     {0x1781, 0x0938, NULL}, /* iguanaworks USB transceiver */
     END_OF_USB_ID_LIST
 };
@@ -71,8 +73,8 @@ deviceList* initServer()
     char expectedDir[PATH_MAX];
     deviceList *list = NULL;
     int x;
-    for(x = 0; ids[x].idVendor != INVALID_VENDOR; x++)
-        ids[x].data = &srvSettings.devSettings;
+    for(x = 0; iguanaUsbIds[x].idVendor != INVALID_VENDOR; x++)
+        iguanaUsbIds[x].data = &srvSettings.devSettings;
 
     /* print a few parameters for the user */
     message(LOG_DEBUG, "Parameters:\n");
@@ -91,7 +93,7 @@ deviceList* initServer()
 #ifdef _WIN32
             srvSettings.driverDir = ".";
 #else
-            srvSettings.driverDir = "/usr/lib/iguanaIR";
+            srvSettings.driverDir = DRIVERSDIR;
 #endif
     }
 
@@ -99,8 +101,9 @@ deviceList* initServer()
     if (! findDriver(srvSettings.driverDir,
                      srvSettings.preferred, srvSettings.onlyPreferred))
         message(LOG_ERROR, "failed to find a loadable driver layer.\n");
-    else if ((list = prepareDeviceList(ids, srvSettings.devFunc)) == NULL)
+    else if ((list = prepareDeviceList(iguanaUsbIds, srvSettings.devFunc)) == NULL)
         message(LOG_ERROR, "failed to initialize the device list.\n");
 
     return list;
 }
+

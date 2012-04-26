@@ -1,7 +1,23 @@
+
 include ../Make.settings
 
-DRIVERS=libusbpre1.so libusb.so
-LISTS=../list.o
+ifdef DARWIN
+MODULE_PREFIX = ig
+endif
+
+LIBUSB_10 = @LIBUSB_10@
+LIBUSB_0 = @LIBUSB_0@
+
+ifneq ($(LIBUSB_10),)
+LIBUSB1DRIVER=$(MODULE_PREFIX)libusb.$(DYNMOD_EXT)
+endif
+ifneq ($(LIBUSB_0),)
+LIBUSB0DRIVER=$(MODULE_PREFIX)libusbpre1.$(DYNMOD_EXT)
+endif
+
+DRIVERS=$(LIBUSB1DRIVER) $(LIBUSB0DRIVER)
+
+LISTS=../list.o ../support.o
 
 ifdef DARWIN
   LDFLAGS += -undefined dynamic_lookup
@@ -9,13 +25,26 @@ endif
 
 all: $(DRIVERS)
 
-libusb.so: libusb.c $(LISTS) Makefile
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(SHAREARG) $(LDFLAGS) -lusb-1.0 $< \
-		$(LISTS) -o $@
+$(LIBUSB1DRIVER): libusb.o $(LISTS) Makefile
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DYNLIB_FLAGS) $(LDFLAGS) $< \
+		$(LISTS) $(LIBUSB_10) -o $@
 
-libusbpre1.so: libusbpre1.c $(LISTS) Makefile
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(SHAREARG) $(LDFLAGS) -lusb $< \
-		$(LISTS) -o $@
+$(LIBUSB0DRIVER): libusbpre1.o $(LISTS) Makefile
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(DYNLIB_FLAGS) $(LDFLAGS) $< \
+		$(LISTS) $(LIBUSB_0) -o $@
+
+.PHONY: install
+install: all
+	$(INSTALL) -d -m 755 $(DESTDIR)/$(libdir)/iguanaIR/;
+	for f in $(DRIVERS); do \
+	  $(INSTALL_DATA) $$f $(DESTDIR)/$(libdir)/iguanaIR/$$f; \
+	done
+
+.PHONY: uninstall
+uninstall: 
+	for f in $(DRIVERS); do \
+	  $(RM) $(DESTDIR)/$(libdir)/iguanaIR/$$f; \
+	done
 
 .PHONY: clean
 clean:
@@ -25,6 +54,6 @@ clean:
 distclean: clean
 	$(RM) -f Makefile
 
-
 Makefile: ../config.status Makefile.in ../Make.settings.in
 	cd ..; $(SHELL) ./config.status
+

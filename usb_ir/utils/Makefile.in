@@ -1,0 +1,37 @@
+include ../Make.settings
+
+UTILS = $(IGMKCODE)
+OBJS = $(IGMKCODE_OBJ)
+
+IGMKCODE = igmkcode
+IGMKCODE_OBJ = igmkcode.o
+
+all: $(UTILS)
+
+$(IGMKCODE): $(IGMKCODE_OBJ)
+	$(CC) $(LDFLAGS) $^ -o $@
+
+.PHONY: install
+install: all
+	$(INSTALL) -d -m 755 $(DESTDIR)/$(bindir)
+	for f in $(UTILS); do \
+	    $(INSTALL_PROGRAM) $$f $(DESTDIR)/$(bindir)/$$f; \
+	done
+
+.PHONY: uninstall
+uninstall: 
+	for f in $(UTILS); do \
+	  $(RM) $(DESTDIR)/$(bindir)/i$$f; \
+	done
+
+.PHONY: clean
+clean:
+	$(RM) -f *~ $(UTILS) $(OBJS)
+
+.PHONY: distclean
+distclean: clean
+	$(RM) -f Makefile
+
+
+Makefile: ../config.status Makefile.in ../Make.settings.in
+	cd ..; $(SHELL) ./config.status

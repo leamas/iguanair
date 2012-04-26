@@ -89,7 +89,7 @@ printf("OPEN %d %s(%d)\n", commPipe[1], __FILE__, __LINE__);
 
 #ifdef __APPLE__
         /* Support hot plug in on Mac OS X -- returns non-zero for error */
-        daemon_osx_support(ids);
+        daemon_osx_support(iguanaUsbIds);
 #endif
 
         /* now wait for commands */

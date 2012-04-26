@@ -14,6 +14,7 @@
 #include "iguanaIR.h"
 #include "compat.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <errno.h>
@@ -257,6 +258,83 @@ static void setSetting(unsigned int setting, const char *pins,
         }
 }
 
+static igtask* makeTask(char *text, const char *arg)
+{
+    igtask *cmd = (igtask*)malloc(sizeof(igtask));
+    if (cmd != NULL)
+    {
+        cmd->command = text;
+        cmd->arg = arg;
+    }
+    return cmd;
+}
+
+static igtask *makeTaskById(int code, const char *arg)
+{
+    int x;
+    for(x = 0; supportedCommands[x].text != NULL; x++)
+    {
+        if (code == supportedCommands[x].code)
+        {
+            return makeTask(supportedCommands[x].text, arg);
+        }
+    }
+    return NULL;
+}
+
+static void freeTask(igtask *cmd)
+{
+    /* explicitly cast off the const qualifier */
+#ifndef WIN32
+    free((char*)cmd->arg);
+#endif
+    free(cmd);
+}
+
+static igtask* enqueueTask(char *text, const char *arg)
+{
+    igtask *cmd;
+
+    cmd = makeTask(text, arg);
+    if (cmd != NULL)
+    {
+        insertItem(&tasks, NULL, (itemHeader*)cmd);
+    }
+    return cmd;
+}
+
+static igtask* enqueueTaskById(unsigned short code, const char *arg)
+{
+    unsigned int x;
+
+    if (code == IG_DEV_SETCHANNELS ||
+        code == IG_DEV_GETPINS ||
+        code == IG_DEV_SETPINS)
+    {
+        igtask *cur = (igtask*)tasks.head;
+        for(; cur; cur = (igtask*)cur->header.next)
+            if (strcmp(cur->command,
+                       supportedCommands[IG_DEV_GETFEATURES].text) == 0)
+                break;
+
+        /* since pci slot-cover devices have 6 channels we
+           need the feature information in order to tell what
+           channel mask to use. */
+        if (cur == NULL)
+        {
+            cur = enqueueTaskById(IG_DEV_GETFEATURES, NULL);
+            cur->isSubTask = true;
+        }
+    }
+
+    for(x = 0; supportedCommands[x].text != NULL; x++)
+        if (code == supportedCommands[x].code)
+            return enqueueTask(supportedCommands[x].text, arg);
+
+    message(LOG_FATAL, "enqueueTaskById failed on code %d\n", code);
+    return NULL;
+}
+
 static bool receiveResponse(PIPE_PTR conn, igtask *cmd, int timeout)
 {
     bool retval = false;
@@ -297,7 +375,7 @@ static bool receiveResponse(PIPE_PTR conn, igtask *cmd, int timeout)
             if (code == IG_DEV_RECV)
             {
                 length /= sizeof(uint32_t);
-                message(LOG_NORMAL, "received %d signal(s):", length);
+                message(LOG_NORMAL, "received %d signal%s:", length, length != 1 ? "s" : "");
                 for(x = 0; x < length; x++)
                 {
                     uint32_t value;
@@ -316,7 +394,7 @@ static bool receiveResponse(PIPE_PTR conn, igtask *cmd, int timeout)
             else
             {
                 if (! cmd->isSubTask)
-                    message(LOG_NORMAL, "%s: success", cmd->spec->text);
+                    message(LOG_NORMAL, "%s: success", cmd->spec->text);;
                 switch(code)
                 {
                 case IG_DEV_GETVERSION:
@@ -352,7 +430,8 @@ static bool receiveResponse(PIPE_PTR conn, igtask *cmd, int timeout)
                     break;
 
                 case IG_DEV_SETCARRIER:
-                    message(LOG_NORMAL,
+                    if (! cmd->isSubTask)
+                        message(LOG_NORMAL,
                             ": carrier=%dHz", ntohl(*(uint32_t*)data));
                     break;
 
@@ -441,6 +520,29 @@ static bool handleInternalTask(igtask *cmd, PIPE_PTR conn)
     return retval;
 }
 
+static bool doRequest(PIPE_PTR conn, igtask *cmd, int result, void *data) {
+    bool retval = false;
+    
+    iguanaPacket request = NULL;
+    
+    request = iguanaCreateRequest((unsigned char)cmd->spec->code,
+                                  result, data);
+    if (request == NULL)
+        message(LOG_ERROR,
+                "Out of memory allocating request.\n");
+    else if (! iguanaWriteRequest(request, conn))
+        message(LOG_ERROR,
+                "Failed to write request to server.\n");
+    else if (receiveResponse(conn, cmd, 10000))
+        retval = true;
+    
+    /* release any allocated data buffers (including
+     * data ptr) */
+    iguanaFreePacket(request);
+    
+    return retval;
+}
+                      
 static bool performTask(PIPE_PTR conn, igtask *cmd)
 {
     bool retval = false;
@@ -449,6 +551,8 @@ static bool performTask(PIPE_PTR conn, igtask *cmd)
         retval = handleInternalTask(cmd, conn);
     else
     {
+        bool abort = false;
+        
         int result = 0;
         void *data = NULL;
                 
@@ -503,7 +607,7 @@ static bool performTask(PIPE_PTR conn, igtask *cmd)
                 if (cmd->spec->code == IG_DEV_SETCARRIER &&
                          (value < 25000 || value > 150000))
                     message(LOG_ERROR, "Carrier frequency must be between 25 and 150 kHz.\n");
-                    else
+		else
                 {
                     data = malloc(4);
                     *(uint32_t *)data = htonl(value);
@@ -550,11 +654,28 @@ static bool performTask(PIPE_PTR conn, igtask *cmd)
         }
 
         case IG_DEV_SEND:
-        case IG_DEV_SENDSIZE:
+        case IG_DEV_SENDSIZE: {
             /* read pulse data from cmd->arg */
-            result = iguanaReadPulseFile(cmd->arg, &data);
+            int carrier = 0;
+            result = iguanaReadModernPulseFile(cmd->arg, &data, &carrier);
             result *= sizeof(uint32_t);
+
+            if (carrier)
+            {
+                igtask *task; 
+                
+                char carrierStr[16];
+                sprintf(carrierStr, "%d", carrier);
+                
+                task = makeTaskById(IG_DEV_SETCARRIER, carrierStr);
+                task->isSubTask = true;
+                if (!checkTask(task) || !performTask(conn, task))
+                {
+                    abort = true;
+                }
+            } 
             break;
+        }
 
         case IG_DEV_RESEND:
             /* read pulse data from cmd->arg */
@@ -598,40 +719,18 @@ static bool performTask(PIPE_PTR conn, igtask *cmd)
         }
         }
 
-        if (result < 0)
+        if (abort)
+            ;   /* The command that failed already printed a message. */
+        else if (result < 0)
             message(LOG_ERROR,
                     "Failed to pack data: %s\n", translateError(errno));
         else
         {
-            iguanaPacket request = NULL;
-
-            request = iguanaCreateRequest((unsigned char)cmd->spec->code,
-                                          result, data);
-            if (request == NULL)
-                message(LOG_ERROR,
-                        "Out of memory allocating request.\n");
-            else if (! iguanaWriteRequest(request, conn))
-                message(LOG_ERROR,
-                        "Failed to write request to server.\n");
-            else if (receiveResponse(conn, cmd, 10000))
-                retval = true;
-
-            /* release any allocated data buffers (including
-             * data ptr) */
-            iguanaFreePacket(request);
+            retval = doRequest(conn, cmd, result, data);
         }
     }
 
     return retval;
-}
-
-static void freeTask(igtask *cmd)
-{
-    /* explicitly cast off the const qualifier */
-#ifndef WIN32
-    free((char*)cmd->arg);
-#endif
-    free(cmd);
 }
 
 static int performQueuedTasks(PIPE_PTR conn)
@@ -648,52 +747,6 @@ static int performQueuedTasks(PIPE_PTR conn)
     }
 
     return failed;
-}
-
-static igtask* enqueueTask(char *text, const char *arg)
-{
-    igtask *cmd;
-
-    cmd = (igtask*)malloc(sizeof(igtask));
-    if (cmd != NULL)
-    {
-        cmd->command = text;
-        cmd->arg = arg;
-        insertItem(&tasks, NULL, (itemHeader*)cmd);
-    }
-    return cmd;
-}
-
-static igtask* enqueueTaskById(unsigned short code, const char *arg)
-{
-    unsigned int x;
-
-    if (code == IG_DEV_SETCHANNELS ||
-        code == IG_DEV_GETPINS ||
-        code == IG_DEV_SETPINS)
-    {
-        igtask *cur = (igtask*)tasks.head;
-        for(; cur; cur = (igtask*)cur->header.next)
-            if (strcmp(cur->command,
-                       supportedCommands[IG_DEV_GETFEATURES].text) == 0)
-                break;
-
-        /* since pci slot-cover devices have 6 channels we
-           need the feature information in order to tell what
-           channel mask to use. */
-        if (cur == NULL)
-        {
-            cur = enqueueTaskById(IG_DEV_GETFEATURES, NULL);
-            cur->isSubTask = true;
-        }
-    }
-
-    for(x = 0; supportedCommands[x].text != NULL; x++)
-        if (code == supportedCommands[x].code)
-            return enqueueTask(supportedCommands[x].text, arg);
-
-    message(LOG_FATAL, "enqueueTaskById failed on code %d\n", code);
-    return NULL;
 }
 
 static struct poptOption options[] =
@@ -856,7 +909,7 @@ int main(int argc, const char **argv)
 
         case 'l':
             openLog(poptGetOptArg(poptCon));
-            break;
+           break;
 
         case 'q':
             changeLogLevel(-1);

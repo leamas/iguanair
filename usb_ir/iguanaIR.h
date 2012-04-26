@@ -158,6 +158,7 @@ IGUANAIR_API iguanaPacket iguanaReadResponse(PIPE_PTR connection,
 IGUANAIR_API bool iguanaResponseIsError(const iguanaPacket response);
 
 /* a few helper functions for dealing with function arguments */
+IGUANAIR_API int iguanaReadModernPulseFile(const char *filename, void **pulses, int *carrier);
 IGUANAIR_API int iguanaReadPulseFile(const char *filename, void **pulses);
 IGUANAIR_API int iguanaReadBlockFile(const char *filename, void **data);
 IGUANAIR_API int iguanaPinSpecToData(unsigned int value, void **data,

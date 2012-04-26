@@ -1,5 +1,7 @@
+
 #include "iguanaIR.h"
 #include "compat.h"
+#include "config.h"
 
 #include "stdio.h"
 #include "string.h"
@@ -25,7 +27,8 @@ bool findDriverDir(char *path)
     return false;
 }
 
-#else
+#elif __linux__ 
+
 bool findDriverDir(char *path)
 {
     void *library;
@@ -50,6 +53,15 @@ bool findDriverDir(char *path)
 
     return false;
 }
+
+#else
+
+bool findDriverDir(char *path)
+{
+	path = 0;
+	return false;
+}
+
 #endif
 
 bool loadDriver(char *path)
@@ -60,7 +72,7 @@ bool loadDriver(char *path)
 
     ext = strrchr(path, '.');
     if (ext != NULL &&
-        strcmp(ext, DYNLIB_EXT) == 0 &&
+        strcmp(ext + 1, DYNMOD_EXT) == 0 &&
         (library = loadLibrary(path)) != NULL &&
         (*(void**)(&getImplementation) = getFuncAddress(library,
                                                         "getImplementation")) != NULL)
@@ -73,6 +85,13 @@ bool checkDriver(const char *root, const char *name)
 {
     bool retval = false;
     char driver[PATH_MAX];
+            
+    /* no need to try to load "." and ".." directories */
+    if (name[0] && name[0] == '.') {
+        if (!name[1] || (name[1] == '.' && !name[2])) {
+            return false;
+        }
+    }
 
     /* combine the root with the name */
 #ifdef WIN32
@@ -99,7 +118,7 @@ bool checkDriver(const char *root, const char *name)
     else if (strrchr(name, '.')  == NULL &&
              strrchr(name, PATH_SEP)  == NULL)
     {
-        strcat(driver, DYNLIB_EXT);
+        strcat(driver, "." DYNMOD_EXT);
         retval = loadDriver(driver);
     }
 
@@ -113,7 +132,7 @@ bool checkDriver(const char *root, const char *name)
 bool findDriver(const char *path, const char **preferred, bool onlyPreferred)
 {
     DIR_HANDLE dir = NULL;
-    char buffer[PATH_MAX];
+    char name[PATH_MAX];
     int x;
 
     /* check through the preferred list */
@@ -123,12 +142,13 @@ bool findDriver(const char *path, const char **preferred, bool onlyPreferred)
                 return true;
 
     /* check through all files in the path if allowed */
-    strcpy(buffer, path);
+    strcpy(name, path);
     while(! onlyPreferred &&
-          (dir = findNextFile(dir, buffer)) != NULL)
-        if (checkDriver(path, buffer))
+          (dir = findNextFile(dir, name)) != NULL) {
+        if (checkDriver(path, name))
             return true;
-
+    }
+    
     return false;
 }
 

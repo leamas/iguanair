@@ -13,6 +13,7 @@
 #include "iguanaIR.h"
 #include "compat.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -170,7 +171,7 @@ bool iguanaResponseIsError(const iguanaPacket response)
     return retval;
 }
 
-int iguanaReadPulseFile(const char *filename, void **pulses)
+static int iguanaReadAnyPulseFile(const char *filename, void **pulses, int *carrier)
 {
     bool success = false;
     int count = 0;
@@ -182,9 +183,18 @@ int iguanaReadPulseFile(const char *filename, void **pulses)
 
     /* open the file and read it line by line */
     errno = EINVAL;
-    input = fopen(filename, "r");
+    if (!strcmp(filename, "-")) {
+        input = stdin;
+        filename = "<stdin>";
+    } else {
+        input = fopen(filename, "r");
+    }
     if (input != NULL)
     {
+        int carrierLineNumber = 0;
+        int commandNumber = 0;
+        bool hasEnded = false;
+        
         int lineNumber = 0;
         while(fgets(buffer, MAX_LINE, input))
         {
@@ -193,9 +203,31 @@ int iguanaReadPulseFile(const char *filename, void **pulses)
             bool discard = false;
 
             line = buffer;
-            success = false;
+            
             lineNumber++;
 
+            if (sscanf(line, "carrier %d", &value) == 1)
+            {
+                ++commandNumber;
+                
+                if (carrierLineNumber)
+                {
+                    message(LOG_WARN,
+                            "Ignoring redefinition of carrier (previous definition on line %d) in pule/space file %s(%d)\n",
+                            carrierLineNumber, filename, lineNumber);
+                }
+                else
+                {
+                    carrierLineNumber = lineNumber;
+
+                    if (carrier)
+                    {
+                        *carrier = value;
+                    }
+                }
+                continue;
+            }
+            
             /* allocate space for one more (not it's not efficient) */
             *pulses = realloc(*pulses, sizeof(uint32_t) * (count + 1));
             if (*pulses == NULL)
@@ -210,60 +242,99 @@ int iguanaReadPulseFile(const char *filename, void **pulses)
             line += strspn(line, " \t\r\n");
             if (line[0] == '\0')
                 continue;
-
-            /* try to read the pulse or space (in a couple formats) */
-            if (sscanf(line, "pulse %d", &value) == 1 ||
-                sscanf(line, "pulse: %d", &value) == 1)
+  
+            /* remove all trailing white space */
             {
-                if (! inSpace)
-                {
-                    ((uint32_t*)(*pulses))[count - 1] += value;
-                    message(LOG_WARN,
-                            "Combining pulses in pulse/space file %s(%d)\n",
-                            filename, lineNumber);
-                    discard = true;
-                }
+                char *linep;
+                for (linep = line + strlen(line) - 1; linep > line && isspace(*linep); --linep);
+                if (linep - 1 >= line) linep[1] = '\0';
             }
-            else if (sscanf(line, "space %d", &value) == 1 ||
-                     sscanf(line, "space: %d", &value) == 1)
-            {
-                /* ignore any leading spaces */
-                if (count == 0)
-                {
-                    message(LOG_INFO, "Discarding leading space.\n");
-                    discard = true;
-                }
-                else if (inSpace)
-                {
-                    ((uint32_t*)(*pulses))[count - 1] += value;
-                    message(LOG_WARN,
-                            "Combining spaces in pulse/space file %s(%d)\n",
-                            filename, lineNumber);
-                    discard = true;
-                }
-            }
-            /* A simple list of numbers is also acceptable.  I believe
-               this was to support some sort of LIRC raw codes. */
-            else if (sscanf(line, "%d", &value) != 1)
+            
+            if (hasEnded)
             {
                 message(LOG_WARN,
-                       "Skipping unparsable line in pulse/space file %s(%d)\n",
-                        filename, lineNumber);
-                discard = true;
-            }
+                        "Skipping extraneous line in pulse/space file %s(%d): %s\n",
+                        filename, lineNumber, line);
 
-            /* bump to the next code */
-            if (! discard)
-            {
-                if (inSpace)
-                    value |= IG_PULSE_BIT;
-                ((uint32_t*)(*pulses))[count++] = value;
-                inSpace ^= 1;
             }
+            else
+            {
+                success = false;
+
+                if (!strcmp(line, "iguanair begin") && commandNumber == 0) 
+                {
+                    ++commandNumber;
+                    discard = true;
+                }
+                else if (!strncmp(line, "end", 3) && (!line[3] || line[3] == '\n'))
+                {
+                    hasEnded = true;
+                    discard = true;
+                }
+
+                /* try to read the pulse or space (in a couple formats) */
+                else if (sscanf(line, "pulse %d", &value) == 1 ||
+                    sscanf(line, "pulse: %d", &value) == 1)
+                {
+                    ++commandNumber;
+                    
+                    if (! inSpace)
+                    {
+                        ((uint32_t*)(*pulses))[count - 1] += value;
+                        message(LOG_WARN,
+                                "Combining pulses in pulse/space file %s(%d)\n",
+                                filename, lineNumber);
+                        discard = true;
+                    }
+                }
+                else if (sscanf(line, "space %d", &value) == 1 ||
+                         sscanf(line, "space: %d", &value) == 1)
+                {
+                    ++commandNumber;
+                    
+                    /* ignore any leading spaces */
+                    if (count == 0)
+                    {
+                        message(LOG_INFO, "Discarding leading space.\n");
+                        discard = true;
+                    }
+                    else if (inSpace)
+                    {
+                        ((uint32_t*)(*pulses))[count - 1] += value;
+                        message(LOG_WARN,
+                                "Combining spaces in pulse/space file %s(%d)\n",
+                                filename, lineNumber);
+                        discard = true;
+                    }
+                }
+                /* A simple list of numbers is also acceptable.  I believe
+                 this was to support some sort of LIRC raw codes. */
+                else if (sscanf(line, "%d", &value) == 1)
+                    ++commandNumber;
+                else
+                {
+                    message(LOG_WARN,
+                            "Skipping unparsable line in pulse/space file %s(%d): %s",
+                            filename, lineNumber, line);
+                    discard = true;
+                }
+                
+                /* bump to the next code */
+                if (! discard)
+                {
+                    if (inSpace)
+                        value |= IG_PULSE_BIT;
+                    ((uint32_t*)(*pulses))[count++] = value;
+                    inSpace ^= 1;
+                }
+            }
+            
             success = true;
         }
 
-        fclose(input);
+        if (input != stdin) {
+            fclose(input);
+        }
     }
 
     /* free the buffer on failure */
@@ -277,6 +348,14 @@ int iguanaReadPulseFile(const char *filename, void **pulses)
         count--;
 
     return count;
+}
+
+int iguanaReadModernPulseFile(const char *filename, void **pulses, int *carrier) {
+    return iguanaReadAnyPulseFile(filename, pulses, carrier);
+}
+
+int iguanaReadPulseFile(const char *filename, void **pulses) {
+    return iguanaReadAnyPulseFile(filename, pulses, NULL);
 }
 
 int iguanaReadBlockFile(const char *filename, void **data)

@@ -16,7 +16,7 @@ investigating using them to control a character LCD panel, and
 possibly turn on the PC from the remote control.
 
 Some important files in this distribution:
-AUTHORS, LICENSE, README.txt
+AUTHORS, LICENSE, README.txt, osx/README-OSX.txt
     Our contact information, the license (GPLv2) for this software,
     and this file.
 

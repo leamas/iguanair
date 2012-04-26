@@ -1,0 +1,40 @@
+
+include ../Make.settings
+
+NAME=iguanaIR-reflasher
+
+all:
+
+dev devel:
+	rm -f hex/body-0.hex
+	ln -s ../../../../firmware/usb_ir.body/output/usb_ir.hex hex/body-0.hex
+	rm -f hex/loader-0.hex
+	ln -s ../../../../firmware/usb_ir.loader/output/usb_ir.hex hex/loader-0.hex
+
+clean:
+	$(RM) hex/body-0.hex
+	$(RM) hex/loader-0.hex
+
+distclean: clean
+
+install:
+installx:
+	install -d $(DESTDIR)$(libdir)/$(NAME)/hex
+	install $(NAME) $(DESTDIR)$(libdir)/$(NAME)
+	for f in $(filter-out hex/loader-0.hex hex/body-0.hex, $(wildcard hex/*.hex)); do \
+	    install -m 644 $$f $(DESTDIR)$(libdir)/$(NAME)/hex; \
+	done
+	install -d $(DESTDIR)$(bindir)
+	rm -f $(DESTDIR)$(bindir)/$(NAME)
+	ln -s $(libdir)/$(NAME)/$(NAME) $(DESTDIR)$(bindir)/$(NAME)
+
+uninstall:
+	rm -f $(DESTDIR)$(bindir)/$(NAME)
+	rm -f $(DESTDIR)$(libdir)/$(NAME)/hex/*.hex
+	rmdir $(DESTDIR)$(libdir)/$(NAME)/hex 2>/dev/null || true
+	rm -f $(DESTDIR)$(libdir)/$(NAME)/upgrade-usb
+
+Makefile: ../config.status Makefile.in ../Make.settings.in
+	cd ..; $(SHELL) ./config.status
+
+.PHONY: all rpm dev devel tarball install

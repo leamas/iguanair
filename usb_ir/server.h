@@ -1,5 +1,5 @@
 /****************************************************************************
- ** daemon.h ****************************************************************
+ ** server.h ****************************************************************
  ****************************************************************************
  *
  * Header included ONLY in daemon.c/service.c
@@ -40,6 +40,8 @@ typedef struct
     bool noThreads;
 #endif
 } serverSettings;
+
+usbId iguanaUsbIds[];
 
 void initServerSettings(deviceFunc devFunc);
 deviceList* initServer();
