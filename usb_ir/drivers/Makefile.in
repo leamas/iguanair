@@ -37,7 +37,7 @@ $(LIBUSB0DRIVER): libusbpre1.o $(LISTS) Makefile
 install: all
 	$(INSTALL) -d -m 755 $(DESTDIR)/$(libdir)/iguanaIR/;
 	for f in $(DRIVERS); do \
-	  $(INSTALL_DATA) $$f $(DESTDIR)/$(libdir)/iguanaIR/$$f; \
+	  $(INSTALL_DYNLIB) $$f $(DESTDIR)/$(libdir)/iguanaIR/$$f; \
 	done
 
 .PHONY: uninstall

@@ -2,23 +2,33 @@ include Make.settings
 
 CFLAGS += -I. -fvisibility=hidden -DIGUANAIR_EXPORTS
 
+LIBNAME_OBJ = iguanaIR.o $(COMMON) $(COMMON_COM)
+
 ifdef DARWIN
-  LINKARGS   = -Wl,-dylib_current_version,1.0.0,-dylib_compatibility_version,1.0.0 -install_name $(DESTDIR)/$(libdir)/$(LIBNAME)
+  LIBNAME = lib$(IGUANAIR).0.$(DYNLIB_EXT)
+  LINKARGS = -Wl,-dylib_current_version,0.1.0,-dylib_compatibility_version,1.0.0 -install_name $(DESTDIR)/$(libdir)/$(LIBNAME)
   EXPORTARGS =
 else
-  LINKARGS   = -Wl,-soname=$(LIBNAME),--version-script=$(srcdir)/ig.ver
+  LIBNAME = lib$(IGUANAIR).$(DYNLIB_EXT).0
+  LINKARGS = -Wl,-soname=$(LIBNAME),--version-script=$(srcdir)/ig.ver
   EXPORTARGS = -Wl,-export-dynamic
 endif
+LIBNAME_A = lib$(IGUANAIR).a
 
 .PHONY: all
-all: igclient igdaemon drivers utils
+all: libs igclient igdaemon drivers utils
 igclient igdaemon: $(LIBNAME)
 
 COMMON = support.o compat-unix.o
 COMMON_COM = dataPackets.o pipes.o
 
-$(LIBNAME): iguanaIR.o $(COMMON) $(COMMON_COM)
+.PHONY: libs
+libs: $(LIBNAME) $(LIBNAME_A)
+
+$(LIBNAME): $(LIBNAME_OBJ)
 	$(CC) $(LINKARGS) $(LDFLAGS) $(DYNLIB_FLAGS) $^ -o $@
+$(LIBNAME_A): $(LIBNAME_OBJ)
+	ar cr $@ $^
 
 .PHONY: drivers utils
 drivers utils:
@@ -52,7 +62,7 @@ install: drivers-install install-python install-utils install-reflasher
 .PHONY: install-python
 install-python:
 	$(INSTALL) -d $(DESTDIR)@PYTHON_SITE_PKG@
-	$(INSTALL_PROGRAM) _iguanaIR.$(PYTHON_DYNMOD_EXT) $(DESTDIR)@PYTHON_SITE_PKG@/_iguanaIR.$(PYTHON_DYNMOD_EXT)
+	$(INSTALL_DYNLIB) _iguanaIR.$(PYTHON_DYNMOD_EXT) $(DESTDIR)@PYTHON_SITE_PKG@/_iguanaIR.$(PYTHON_DYNMOD_EXT)
 	$(INSTALL_DATA) iguanaIR.py $(DESTDIR)@PYTHON_SITE_PKG@/iguanaIR.py
 
 .PHONY: install-utils install-reflasher
@@ -102,22 +112,24 @@ install: install-symlink
 .PHONY: install-symlink
 install-symlink:
 	install -d $(DESTDIR)/$(libdir)
-	$(RM) $(DESTDIR)/$(libdir)/libiguanaIR.$(DYNLIB_EXT)
-	ln -s $(LIBNAME) $(DESTDIR)/$(libdir)/libiguanaIR.$(DYNLIB_EXT)
+	$(RM) $(DESTDIR)/$(libdir)/lib$(IGUANAIR).$(DYNLIB_EXT)
+	ln -s $(LIBNAME) $(DESTDIR)/$(libdir)/lib$(IGUANAIR).$(DYNLIB_EXT)
 endif
 
 .PHONY: install
 install: all
-	install -d $(DESTDIR)/$(bindir)
-	install igclient $(DESTDIR)/$(bindir)/igclient
-	install igdaemon $(DESTDIR)/$(bindir)/igdaemon
-	install -d $(DESTDIR)/$(libdir)/iguanaIR
-	install $(LIBNAME) $(DESTDIR)/$(libdir)/$(LIBNAME)
-	install -d $(DESTDIR)$(prefix)/include
-	install $(srcdir)/iguanaIR.h $(DESTDIR)$(prefix)/include/iguanaIR.h
+	$(INSTALL) -d $(DESTDIR)/$(bindir)
+	$(INSTALL_PROGRAM) igclient $(DESTDIR)/$(bindir)/igclient
+	$(INSTALL_PROGRAM) igdaemon $(DESTDIR)/$(bindir)/igdaemon
+	$(INSTALL) -d $(DESTDIR)/$(libdir)/iguanaIR
+	$(INSTALL_DYNLIB) $(LIBNAME) $(DESTDIR)/$(libdir)/$(LIBNAME)
+	$(INSTALL_DATA) $(LIBNAME_A) $(DESTDIR)/$(libdir)/$(LIBNAME_A)
+	$(INSTALL) -d $(DESTDIR)$(prefix)/include
+	$(INSTALL_DATA) $(srcdir)/iguanaIR.h $(DESTDIR)$(prefix)/include/iguanaIR.h
 ifdef DARWIN
-	install -m 644 osx/net.iguanaworks.igdaemon.plist \
-                              $(DESTDIR)/Library/LaunchDaemons/net.iguanaworks.igdaemon.plist
+	$(INSTALL) -d $(DESTDIR)/Library/LaunchDaemons
+	$(INSTALL_DATA) osx/net.iguanaworks.igdaemon.plist \
+                              $(DESTDIR)/Library/LaunchDaemons/p_net.iguanaworks.igdaemon.plist
 else
 	$(INSTALL) -d $(DESTDIR)/etc/init.d/iguanaIR
 	$(INSTALL_DATA) $(srcdir)/iguanaIR.init $(DESTDIR)/etc/init.d/iguanaIR
@@ -145,6 +157,7 @@ uninstall:
 	$(RM) $(DESTDIR)$(bindir)/igdaemon
 	$(RM) $(DESTDIR)$(libdir)/$(LIBNAME)
 	$(RM) $(DESTDIR)$(libdir)/libiguanaIR.$(DYNLIB_EXT)
+	$(RM) $(DESTDIR)$(libdir)/$(LIBNAME_A)
 	$(RM) $(DESTDIR)$(prefix)/include/iguanaIR.h
 	$(RM)r $(DESTDIR)$(libdir)/iguanaIR
 	$(RM)r $(DESTDIR)$(libdir)/iguanaIR-reflasher

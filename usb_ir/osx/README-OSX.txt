@@ -28,7 +28,7 @@ script for configuration. As usual, non standard directories need to be
 provided to configure, so a Darwin port installation could be configured
 through:
 
-  % CPPFLAGS=-I/opt/local/include LDFLAGS=-L/opt/local/lib ./configure -prefix=/usr/local
+  % CPPFLAGS=-I/opt/local/include LDFLAGS=-L/opt/local/lib ./configure -prefix=/opt/local
 
 if one wanted to install in /usr/local.
 

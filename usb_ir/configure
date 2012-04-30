@@ -8002,7 +8002,7 @@ echo "$as_me: WARNING: cannot determine SWIG version" >&2;}
 
 
 # Output some files
-ac_config_files="$ac_config_files Make.settings Makefile drivers/Makefile utils/Makefile reflasher/Makefile"
+ac_config_files="$ac_config_files Make.settings Makefile drivers/Makefile utils/Makefile reflasher/Makefile irconv/Makefile"
 
 ac_config_files="$ac_config_files autoconf/stamp-h"
 
@@ -8565,6 +8565,7 @@ do
     "drivers/Makefile") CONFIG_FILES="$CONFIG_FILES drivers/Makefile" ;;
     "utils/Makefile") CONFIG_FILES="$CONFIG_FILES utils/Makefile" ;;
     "reflasher/Makefile") CONFIG_FILES="$CONFIG_FILES reflasher/Makefile" ;;
+    "irconv/Makefile") CONFIG_FILES="$CONFIG_FILES irconv/Makefile" ;;
     "autoconf/stamp-h") CONFIG_FILES="$CONFIG_FILES autoconf/stamp-h" ;;
 
   *) { { echo "$as_me:$LINENO: error: invalid argument: $ac_config_target" >&5
