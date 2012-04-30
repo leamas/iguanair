@@ -22,6 +22,7 @@ AC_SUBST(DYNMOD_EXT)
 
 # Check for some target-specific stuff.
 AC_CANONICAL_HOST
+AC_SUBST(host_os)
 libdirname=lib
 AC_SUBST(libdirname)
 case "$host" in
@@ -219,6 +220,6 @@ if test x$USE_PYTHON != xno; then
 fi
 
 # Output some files
-AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile osx/Makefile utils/Makefile reflasher/Makefile])
+AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile darwin/Makefile utils/Makefile reflasher/Makefile])
 AC_OUTPUT(autoconf/stamp-h)
 

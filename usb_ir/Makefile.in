@@ -12,7 +12,7 @@ LIBNAME_OBJ = iguanaIR.o $(COMMON) $(COMMON_COM)
 
 ifdef DARWIN
   LIBNAME = lib$(IGUANAIR).0.$(DYNLIB_EXT)
-  LINKARGS = -Wl,-dylib_current_version,0.1.0,-dylib_compatibility_version,1.0.0 -install_name $(DESTDIR)/$(libdir)/$(LIBNAME)
+  LINKARGS = -Wl,-dylib_current_version,0.1.0,-dylib_compatibility_version,0.1.0 -install_name $(DESTDIR)/$(libdir)/$(LIBNAME)
   EXPORTARGS =
 else
   LIBNAME = lib$(IGUANAIR).$(DYNLIB_EXT).0
@@ -40,15 +40,26 @@ $(LIBNAME_A): $(LIBNAME_OBJ)
 drivers utils:
 	$(MAKE) -C $@ prefix=$(prefix)
 
-ifneq ($(OSSUPPORT),)
-OSSUPPORT_OBJ = $(OSSUPPORT)/daemon$(OSSUPPORT).o
+# Export variables
 
 export CPPFLAGS
 export CFLAGS
 
-.PHONY: $(OSSUPPORT)
+export DESTDIR
+
+# Support for OS-specific targets.
+
+ifneq ($(OSSUPPORT),)
+OSSUPPORT_OBJ = $(OSSUPPORT)/daemon-$(OSSUPPORT).o
+
+OSSUPPORT_INSTALL = $(OSSUPPORT)-install
+OSSUPPORT_UNINSTALL = $(OSSUPPORT)-uninstall
+
+.PHONY: $(OSSUPPORT) $(OSSUPPORT_INSTALL) $(OSSUPPORT_UNINSTALL)
 $(OSSUPPORT):
 	$(MAKE) -C $@
+#$(OSSUPPORT_INSTALL) $(OSSUPPORT_UNINSTALL):
+#	$(MAKE) -C $(OSSUPPORT) $(patsubst $(OSSUPPORT)-%,%,$@)
 endif
 
 igdaemon: daemon.o \
@@ -72,29 +83,33 @@ driver.o: $(srcdir)/driver.c Makefile $(top_srcdir)/iguanaIR.h
 # need a special dependency for config.h
 compat-unix.o: compat-unix.c config.h
 
+install: drivers-install $(OSSUPPORT_INSTALL) utils-install reflasher-install
+
+.PHONY: utils-install reflasher-install
+$(OSSUPPORT_INSTALL) utils-install reflasher-install:
+	$(MAKE) -C $(patsubst %-install,%,$@) install
+
+uninstall: drivers-uninstall $(OSSUPPORT_UNINSTALL) utils-uninstall reflasher-uninstall
+
+.PHONY: uninstall-utils uninstall-reflasher
+$(OSSUPPORT_UNINSTALL) utils-uninstall reflasher-uninstall:
+	$(MAKE) -C $(patsubst %-uninstall,%,$@) uninstall
+
+
 # NOTE: I would rather use PYTHON_VERSION, but it doesn't work
 ifneq (@PYTHON_CPPFLAGS@,)
 all: _iguanaIR.$(PYTHON_DYNMOD_EXT)
-install: drivers-install install-python install-utils install-reflasher
+install: install-python
 .PHONY: install-python
 install-python:
 	$(INSTALL) -d $(DESTDIR)@PYTHON_SITE_PKG@
 	$(INSTALL_DYNLIB) _iguanaIR.$(PYTHON_DYNMOD_EXT) $(DESTDIR)@PYTHON_SITE_PKG@/_iguanaIR.$(PYTHON_DYNMOD_EXT)
 	$(INSTALL_DATA) iguanaIR.py $(DESTDIR)@PYTHON_SITE_PKG@/iguanaIR.py
 
-.PHONY: install-utils install-reflasher
-install-utils install-reflasher:
-	$(MAKE) -C $(srcdir)/$(patsubst install-%,%,$@) prefix=$(prefix) bindir=$(bindir) libdir=$(libdir) install
-
-uninstall: drivers-uninstall uninstall-python uninstall-utils uninstall-reflasher
 .PHONY: uninstall-python
 uninstall-python:
 	$(RM) $(DESTDIR)@PYTHON_SITE_PKG@/_iguanaIR.$(PYTHON_DYNMOD_EXT)
 	$(RM) $(DESTDIR)@PYTHON_SITE_PKG@/iguanaIR.py
-
-.PHONY: uninstall-utils uninstall-reflasher
-uninstall-utils uninstall-reflasher:
-	$(MAKE) -C $(patsubst uninstall-%,%,$@) DESTDIR=$(DESTDIR) prefix=$(prefix) uninstall
 
 iguanaIR_wrap.c iguanaIR.py: iguanaIR.i iguanaIR.h Makefile
 	swig $(CPPFLAGS) @PYTHON_CPPFLAGS@ -python -I$(srcdir) $(<F)
@@ -143,11 +158,7 @@ install: all
 	$(INSTALL_DATA) $(LIBNAME_A) $(DESTDIR)/$(libdir)/$(LIBNAME_A)
 	$(INSTALL) -d $(DESTDIR)$(prefix)/include
 	$(INSTALL_DATA) $(srcdir)/iguanaIR.h $(DESTDIR)$(prefix)/include/iguanaIR.h
-ifdef DARWIN
-	$(INSTALL) -d $(DESTDIR)/Library/LaunchDaemons
-	$(INSTALL_DATA) osx/net.iguanaworks.igdaemon.plist \
-                              $(DESTDIR)/Library/LaunchDaemons/p_net.iguanaworks.igdaemon.plist
-else
+ifndef DARWIN
 	$(INSTALL) -d $(DESTDIR)/etc/init.d/iguanaIR
 	$(INSTALL_DATA) $(srcdir)/iguanaIR.init $(DESTDIR)/etc/init.d/iguanaIR
 	$(INSTALL) -d $(DESTDIR)/etc/default/iguanaIR
@@ -205,10 +216,6 @@ cleanest: distclean
 .PHONY: package
 package: distclean
 	$(MAKE) -C packaging prefix=$(prefix) builddir="$(builddir)"
-
-
-
-
 
 AUTOCONF=autoconf
 ACLOCAL=aclocal

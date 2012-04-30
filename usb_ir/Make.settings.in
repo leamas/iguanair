@@ -11,6 +11,7 @@ datarootdir = @datarootdir@
 infodir = $(datarootdir)/info
 mandir = $(datarootdir)/man/man1
 builddir = $(shell pwd)
+host_os = @host_os@
 
 CC = @CC@
 CPPFLAGS = @CPPFLAGS@
@@ -35,16 +36,19 @@ DYNMOD_EXT = @DYNMOD_EXT@
 
 PYTHON_DYNMOD_EXT = $(DYNMOD_EXT)
 
-ifeq ($(shell uname -s),Darwin)
+ifeq ($(patsubst darwin%,darwin,$(host_os)),darwin)
+   OSSUPPORT = darwin
    DARWIN = 1
    PATH = $(shell getconf PATH):/usr/local/bin:/opt/local/bin:/sw/bin
    export PATH
    DAEMON_LDFLAGS += -framework CoreFoundation -framework IOKit
    DYNLIB_FLAGS = -dynamiclib
    PYTHON_DYNMOD_EXT = so
-   OSSUPPORT = osx
 else
     CFLAGS += -fpic
     DYNLIB_FLAGS = -shared
+    ifeq ($(host_os),linux)
+        OSSUPPORT = linux
+    endif
 endif
 
