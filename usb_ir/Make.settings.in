@@ -1,9 +1,7 @@
+
 SHELL = /bin/sh
 VPATH = @srcdir@
 
-subdirs = @subdirs@
-top_srcdir = @top_srcdir@
-srcdir = @srcdir@
 prefix = @prefix@
 libdirname = @libdirname@
 exec_prefix = @exec_prefix@
@@ -24,6 +22,12 @@ INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_DYNLIB = ${INSTALL} -m 755
 
+#
+
+CPPFLAGS += -I$(top_builddir) -I$(srcdir) -I$(top_srcdir) 
+
+#
+
 IGUANAIR=iguanaIR
 
 DYNLIB_EXT = @DYNLIB_EXT@
@@ -38,7 +42,7 @@ ifeq ($(shell uname -s),Darwin)
    DAEMON_LDFLAGS += -framework CoreFoundation -framework IOKit
    DYNLIB_FLAGS = -dynamiclib
    PYTHON_DYNMOD_EXT = so
-   OSSUPPORT = osx/daemonosx.o
+   OSSUPPORT = osx
 else
     CFLAGS += -fpic
     DYNLIB_FLAGS = -shared

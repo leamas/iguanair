@@ -50,7 +50,7 @@ AC_CHECK_LIB([popt], [poptGetContext],
   [AC_CHECK_HEADER(popt.h, [HAVE_POPT_DEVEL=yes])]
 )
 if test x$HAVE_POPT_DEVEL = x; then
-  AC_MSG_ERROR([Could not find popt; please install libpopt-dev (or popt-devel in Fedora)])
+  AC_MSG_ERROR([Could not find popt; please install libpopt-dev (popt-devel in Fedora; popt in MacPorts; etc.)])
 fi
 
 AC_CHECK_LIB([pthread], [pthread_create])
@@ -196,25 +196,29 @@ fi
 AC_SUBST(LIBUSB_0)
 
 if test x$LIBUSB_10 = x -a x$LIBUSB_0 = x; then
-  AC_MSG_ERROR([Could not find a USB library; please install libusb-1.0.0-dev or libusb-dev (or libusb-devel on Fedora)])
+  AC_MSG_ERROR([Could not find a USB library; please install libusb-1.0.0-dev or libusb-dev (libusb-devel on Fedora; libusb-1.0 in MacPorts; etc.)])
   exit 1
 fi
 
 # Allow the user to override python detection
 AC_ARG_ENABLE(python,
-  [  --disable-python do build the Python interface.],
+  [  --enable-python build a Python interface],
   [ if test x$enableval == xno; then
         USE_PYTHON=no
-    fi ],
+    fi ]
 )
 if test x$USE_PYTHON != xno; then
-    # fetch the python version
+    # fetch the Python version
     AC_PYTHON_DEVEL()
+    # look for swig since we need it to build the Pyhon bindings
+    req_swig_version=1.3.31
+    AC_PROG_SWIG($req_swig_version)
+    if test x"$SWIG" = x; then
+        AC_MSG_ERROR([Could not find a usable version of SWIG; please use --disable-python or install SWIG $req_swig_version or later])
+    fi
 fi
 
-# look for swig
-AC_PROG_SWIG(1.3.31)
-
 # Output some files
-AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile utils/Makefile reflasher/Makefile])
+AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile osx/Makefile utils/Makefile reflasher/Makefile])
 AC_OUTPUT(autoconf/stamp-h)
+

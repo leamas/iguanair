@@ -1,12 +1,10 @@
 AC_DEFUN([AC_PROG_SWIG],[
         AC_PATH_PROG([SWIG],[swig])
         if test -z "$SWIG" ; then
-                AC_MSG_WARN([cannot find 'swig' program. You should look at http://www.swig.org])
-                SWIG='echo "Error: SWIG is not installed. You should look at http://www.swig.org" ; false'
+                SWIG=
         elif test -n "$1" ; then
-                AC_MSG_CHECKING([for SWIG version])
+                AC_MSG_CHECKING([for a version of SWIG >= $1])
                 [swig_version=`$SWIG -version 2>&1 | grep 'SWIG Version' | sed 's/.*\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*/\1/g'`]
-                AC_MSG_RESULT([$swig_version])
                 if test -n "$swig_version" ; then
                         # Calculate the required version number components
                         [required=$1]
@@ -43,16 +41,17 @@ AC_DEFUN([AC_PROG_SWIG],[
 			available_vers=`expr \( \( 100 \* $available_major \) + $available_minor \) \* 100 + $available_patch`
 			required_vers=`expr \( \( 100 \* $available_major \) + $available_minor \) \* 100 + $available_patch`
                         if test $available_vers -lt $required_vers; then
-                                AC_MSG_WARN([SWIG version >= $1 is required.  You have $swig_version.  You should look at http://www.swig.org])
-                                SWIG='echo "Error: SWIG version >= $1 is required.  You have '"$swig_version"'.  You should look at http://www.swig.org" ; false'
+                                SWIG=
                         else
-                                AC_MSG_NOTICE([SWIG executable is '$SWIG'])
                                 SWIG_LIB=`$SWIG -swiglib`
-                                AC_MSG_NOTICE([SWIG library directory is '$SWIG_LIB'])
                         fi
                 else
-                        AC_MSG_WARN([cannot determine SWIG version])
-                        SWIG='echo "Error: Cannot determine SWIG version.  You should look at http://www.swig.org" ; false'
+                        SWIG=
+                fi
+                if test x"$SWIG" = x; then
+                    AC_MSG_RESULT([no])
+                else
+                    AC_MSG_RESULT([yes])
                 fi
         fi
         AC_SUBST([SWIG_LIB])

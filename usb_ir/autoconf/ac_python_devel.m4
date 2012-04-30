@@ -24,7 +24,7 @@
 #   reserved for the end-user.
 #
 #   This macro should work for all versions of Python >= 2.1.0. As an
-#   end user, you can disable the check for the python version by
+#   end user, you can disable the check for the Python version by
 #   setting the PYTHON_NOVERSIONCHECK environment variable to something
 #   else than the empty string.
 #
@@ -75,7 +75,7 @@
 
 AC_DEFUN([AC_PYTHON_DEVEL],[
 	#
-	# Allow the use of a (user set) custom python version
+	# Allow the use of a (user set) custom Python version
 	#
 	AC_ARG_VAR([PYTHON_VERSION],[The installed Python
 		version to use, for example '2.3'. This string
@@ -230,7 +230,7 @@ $ac_distutils_result])
 	#
 	# final check to see if everything compiles alright
 	#
-	AC_MSG_CHECKING([consistency of all components of python development environment])
+	AC_MSG_CHECKING([consistency of all components of Python development environment])
 	AC_LANG_PUSH([C])
 	# save current global flags
         ac_save_LIBS=$LIBS

@@ -1,6 +1,12 @@
+
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+top_builddir = @top_builddir@
+builddir = @builddir@
+
 include Make.settings
 
-CFLAGS += -I. -fvisibility=hidden -DIGUANAIR_EXPORTS
+CFLAGS += -fvisibility=hidden -DIGUANAIR_EXPORTS
 
 LIBNAME_OBJ = iguanaIR.o $(COMMON) $(COMMON_COM)
 
@@ -32,11 +38,22 @@ $(LIBNAME_A): $(LIBNAME_OBJ)
 
 .PHONY: drivers utils
 drivers utils:
-	$(MAKE) -C $(srcdir)/$@ prefix=$(prefix)
+	$(MAKE) -C $@ prefix=$(prefix)
+
+ifneq ($(OSSUPPORT),)
+OSSUPPORT_OBJ = $(OSSUPPORT)/daemon$(OSSUPPORT).o
+
+export CPPFLAGS
+export CFLAGS
+
+.PHONY: $(OSSUPPORT)
+$(OSSUPPORT):
+	$(MAKE) -C $@
+endif
 
 igdaemon: daemon.o \
 	  server.o client-interface.o device-interface.o driver.o \
-          list.o protocol-versions.o $(OSSUPPORT) $(COMMON) $(COMMON_COM)
+          list.o protocol-versions.o $(OSSUPPORT_OBJ) $(COMMON) $(COMMON_COM)
 	$(CC) $(EXPORTARGS) $(CPPFLAGS) $(CFLAGS) -DSUPPORT_EXPORTS \
               $(LDFLAGS) $(DAEMON_LDFLAGS) $^ -lpopt -lpthread -ldl $(LIBNAME) -o $@
 
@@ -46,10 +63,10 @@ server.o: CPPFLAGS += \
 igclient: client.o list.o $(COMMON)
 	$(CC) $(LDFLAGS) $^ -lpopt $(LIBNAME) -o $@
 
-%.o: %.c Makefile iguanaIR.h
+%.o: $(srcdir)/%.c Makefile $(top_srcdir)/iguanaIR.h
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-driver.o: driver.c Makefile iguanaIR.h
+driver.o: $(srcdir)/driver.c Makefile $(top_srcdir)/iguanaIR.h
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -Wno-strict-aliasing $< -o $@
 
 # need a special dependency for config.h
@@ -77,7 +94,7 @@ uninstall-python:
 
 .PHONY: uninstall-utils uninstall-reflasher
 uninstall-utils uninstall-reflasher:
-	$(MAKE) -C $(srcdir)/$(patsubst uninstall-%,%,$@) DESTDIR=$(DESTDIR) prefix=$(prefix) uninstall
+	$(MAKE) -C $(patsubst uninstall-%,%,$@) DESTDIR=$(DESTDIR) prefix=$(prefix) uninstall
 
 iguanaIR_wrap.c iguanaIR.py: iguanaIR.i iguanaIR.h Makefile
 	swig $(CPPFLAGS) @PYTHON_CPPFLAGS@ -python -I$(srcdir) $(<F)
@@ -142,7 +159,7 @@ else
 endif
 .PHONY: drivers-install
 drivers-install:
-	$(MAKE) -C $(srcdir)/drivers DESTDIR=$(DESTDIR) prefix=$(prefix) install
+	$(MAKE) -C drivers DESTDIR=$(DESTDIR) prefix=$(prefix) install
 
 .PHONY: uninstall
 uninstall:
@@ -164,22 +181,22 @@ uninstall:
 
 .PHONY: drivers-uninstall
 drivers-uninstall:
-	$(MAKE) -C $(srcdir)/drivers DESTDIR=$(DESTDIR) prefix=$(prefix) uninstall
+	$(MAKE) -C drivers DESTDIR=$(DESTDIR) prefix=$(prefix) uninstall
 
 .PHONY: clean clean-drivers clean-reflasher clean-utils
 clean: clean-drivers clean-reflasher clean-utils
 	$(RM) *~ *.o $(LIBNAME_A) $(LIBNAME) *iguanaIR.$(DYNLIB_EXT) *iguanaIR.$(DYNLIB_EXT).* *iguanaIR.$(PYTHON_DYNMOD_EXT) *libiguanaIR.* iguanaIR.py* iguanaIR_wrap.c igdaemon igclient config.log
 
 clean-drivers clean-reflasher clean-utils:
-	$(MAKE) -C $(srcdir)/$(patsubst clean-%,%, $@) prefix=$(prefix) clean
+	$(MAKE) -C $(patsubst clean-%,%, $@) prefix=$(prefix) clean
 
 .PHONY: distclean distclean-drivers distclean-reflasher distclean-utils
 distclean: clean distclean-drivers distclean-reflasher distclean-utils
 	$(RM) Makefile config.h config.status
-	$(MAKE) -C $(srcdir)/packaging prefix=$(prefix) builddir="$(builddir)" clean
+	$(MAKE) -C packaging prefix=$(prefix) builddir="$(builddir)" clean
 
 drivers-distclean reflasher-distclean:
-	$(MAKE) -C $(srcdir)/$(patsubst distclean-%,%,$@) prefix=$(prefix) distclean
+	$(MAKE) -C $(patsubst distclean-%,%,$@) prefix=$(prefix) distclean
 
 .PHONY: cleanest
 cleanest: distclean
@@ -187,7 +204,7 @@ cleanest: distclean
 
 .PHONY: package
 package: distclean
-	$(MAKE) -C $(srcdir)/packaging prefix=$(prefix) builddir="$(builddir)"
+	$(MAKE) -C packaging prefix=$(prefix) builddir="$(builddir)"
 
 
 
@@ -219,7 +236,7 @@ config.h.in: autoconf/configure.ac
 config.status: configure
 	$(SHELL) ./config.status --recheck
 
-Makefile: ./config.status Makefile.in ./Make.settings.in
+Makefile: ./config.status $(srcdir)/Makefile.in $(top_srcdir)/Make.settings.in
 	$(SHELL) $<
 
 config.h: autoconf/stamp-h

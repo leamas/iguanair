@@ -1,4 +1,7 @@
 
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+
 include ../Make.settings
 
 NAME=iguanaIR-reflasher
@@ -34,7 +37,7 @@ uninstall:
 	rmdir $(DESTDIR)$(libdir)/$(NAME)/hex 2>/dev/null || true
 	rm -f $(DESTDIR)$(libdir)/$(NAME)/upgrade-usb
 
-Makefile: ../config.status Makefile.in ../Make.settings.in
-	cd ..; $(SHELL) ./config.status
+Makefile: ../config.status $(srcdir)/Makefile.in $(top_srcdir)/Make.settings.in
+	cd .. && $(SHELL) ./config.status
 
 .PHONY: all rpm dev devel tarball install

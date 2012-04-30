@@ -1,3 +1,9 @@
+
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+top_builddir = @top_builddir@
+builddir = @builddir@
+
 include ../Make.settings
 
 UTILS = $(IGMKCODE)
@@ -7,6 +13,9 @@ IGMKCODE = igmkcode
 IGMKCODE_OBJ = igmkcode.o
 
 all: $(UTILS)
+
+%.o: $(srcdir)/%.c Makefile
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 $(IGMKCODE): $(IGMKCODE_OBJ)
 	$(CC) $(LDFLAGS) $^ -o $@
@@ -33,5 +42,5 @@ distclean: clean
 	$(RM) -f Makefile
 
 
-Makefile: ../config.status Makefile.in ../Make.settings.in
-	cd ..; $(SHELL) ./config.status
+Makefile: ../config.status $(srcdir)/Makefile.in $(top_srcdir)/Make.settings.in
+	cd .. && $(SHELL) ./config.status

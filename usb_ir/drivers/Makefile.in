@@ -1,4 +1,10 @@
 
+
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+top_builddir = @top_builddir@
+builddir = @builddir@
+
 include ../Make.settings
 
 ifdef DARWIN
@@ -33,6 +39,9 @@ $(LIBUSB0DRIVER): libusbpre1.o $(LISTS) Makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(DYNLIB_FLAGS) $(LDFLAGS) $< \
 		$(LISTS) $(LIBUSB_0) -o $@
 
+%.o: $(srcdir)/%.c Makefile $(top_srcdir)/iguanaIR.h
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
 .PHONY: install
 install: all
 	$(INSTALL) -d -m 755 $(DESTDIR)/$(libdir)/iguanaIR/;
@@ -46,14 +55,12 @@ uninstall:
 	  $(RM) $(DESTDIR)/$(libdir)/iguanaIR/$$f; \
 	done
 
-.PHONY: clean
+.PHONY: clean distclean
 clean:
-	$(RM) -f *~ *.o $(DRIVERS)
-
-.PHONY: distclean
+	$(RM) *~ *.o $(DRIVERS)
 distclean: clean
-	$(RM) -f Makefile
+	$(RM) Makefile
 
-Makefile: ../config.status Makefile.in ../Make.settings.in
-	cd ..; $(SHELL) ./config.status
+Makefile: ../config.status $(srcdir)/Makefile.in $(top_srcdir)/Make.settings.in
+	cd .. && $(SHELL) ./config.status
 
