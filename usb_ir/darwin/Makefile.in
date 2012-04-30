@@ -1,0 +1,35 @@
+
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+
+include ../Make.settings
+
+OBJ = daemon-darwin.o
+
+CFLAGS += -fvisibility=hidden -DIGUANAIR_EXPORTS
+
+%.o: $(srcdir)/%.c Makefile $(top_srcdir)/iguanaIR.h
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+
+.PHONY: all darwin
+
+all: $(OBJ)
+
+Makefile: ../config.status $(srcdir)/Makefile.in $(top_srcdir)/Make.settings.in
+	cd .. && $(SHELL) ./config.status
+
+.PHONY: clean distclean
+clean:
+	$(RM) $(OBJ)
+distclean: clean
+	$(RM) Makefile
+
+.PHONY: install uninstall
+install:
+	$(INSTALL) -d $(DESTDIR)/Library/LaunchDaemons
+	$(INSTALL_DATA) $(srcdir)/net.iguanaworks.igdaemon.plist \
+                              $(DESTDIR)/Library/LaunchDaemons/net.iguanaworks.igdaemon.plist
+
+uninstall:
+	$(RM) $(DESTDIR)/Library/LaunchDaemons/net.iguanaworks.igdaemon.plist
+
