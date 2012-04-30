@@ -168,7 +168,7 @@ drivers-uninstall:
 
 .PHONY: clean clean-drivers clean-reflasher clean-utils
 clean: clean-drivers clean-reflasher clean-utils
-	$(RM) *~ *.o *iguanaIR.$(DYNLIB_EXT) *iguanaIR.$(DYNLIB_EXT).* *iguanaIR.$(PYTHON_DYNMOD_EXT) *libiguanaIR.* iguanaIR.py* iguanaIR_wrap.c igdaemon igclient config.log
+	$(RM) *~ *.o $(LIBNAME_A) $(LIBNAME) *iguanaIR.$(DYNLIB_EXT) *iguanaIR.$(DYNLIB_EXT).* *iguanaIR.$(PYTHON_DYNMOD_EXT) *libiguanaIR.* iguanaIR.py* iguanaIR_wrap.c igdaemon igclient config.log
 
 clean-drivers clean-reflasher clean-utils:
 	$(MAKE) -C $(srcdir)/$(patsubst clean-%,%, $@) prefix=$(prefix) clean

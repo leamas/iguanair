@@ -30,7 +30,7 @@ through:
 
   % CPPFLAGS=-I/opt/local/include LDFLAGS=-L/opt/local/lib ./configure -prefix=/opt/local
 
-if one wanted to install in /usr/local.
+if one wanted to install in /opt/local.
 
 * DRIVER
 
