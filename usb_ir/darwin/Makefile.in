@@ -4,6 +4,9 @@ srcdir = @srcdir@
 
 include ../Make.settings
 
+launchdir = /Library/LaunchDaemons
+
+IGDAEMON_PLIST = net.iguanaworks.igdaemon.plist
 OBJ = daemon-darwin.o
 
 CFLAGS += -fvisibility=hidden -DIGUANAIR_EXPORTS
@@ -11,12 +14,9 @@ CFLAGS += -fvisibility=hidden -DIGUANAIR_EXPORTS
 %.o: $(srcdir)/%.c Makefile $(top_srcdir)/iguanaIR.h
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-launchdir = /Library/LaunchDaemons
-
 .PHONY: all
 all: Makefile $(OBJ) $(IGDAEMON_PLIST)
 
-IGDAEMON_PLIST = net.iguanaworks.igdaemon.plist
 $(IGDAEMON_PLIST): $(srcdir)/$(IGDAEMON_PLIST).in
 	sed s',@''bindir@,$(bindir),' $< >$@
 
