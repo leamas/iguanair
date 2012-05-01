@@ -220,6 +220,6 @@ if test x$USE_PYTHON != xno; then
 fi
 
 # Output some files
-AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile darwin/Makefile utils/Makefile reflasher/Makefile])
+AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile darwin/Makefile utils/Makefile reflasher/Makefile packaging/Makefile])
 AC_OUTPUT(autoconf/stamp-h)
 

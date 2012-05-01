@@ -9,10 +9,10 @@
 	<key>RunAtLoad</key>
 	<true/>
 	<key>Label</key>
-	<string>com.iguana.igdaemon</string>
+	<string>net.iguanaworks.igdaemon</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/bin/igdaemon</string>
+		<string>@bindir@/igdaemon</string>
 		<string>--no-daemon</string>
 	</array>
 </dict>

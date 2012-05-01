@@ -17,8 +17,8 @@ dev devel:
 clean:
 	$(RM) hex/body-0.hex
 	$(RM) hex/loader-0.hex
-
 distclean: clean
+	$(RM) Makefile
 
 install:
 installx:

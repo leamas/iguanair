@@ -3,8 +3,18 @@ VERSION = $(shell grep Version: fedora/$(NAME).spec | sed 's/[^ ]*[ ]*//')
 CURRENT = $(shell head -1 /etc/issue | sed 's/ .*//' | tr 'A-Z' 'a-z')
 NAMEVER = $(NAME)-$(VERSION)
 
+prefix = @prefix@
+
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+top_builddir = @top_builddir@
+builddir = @builddir@
+
+
 all:
 clean:
+distclean: clean
+	$(RM) Makefile
 
 ifeq ($(CURRENT),fedora)
 all: fedora
