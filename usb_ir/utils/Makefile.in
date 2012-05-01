@@ -7,12 +7,14 @@ builddir = @builddir@
 include ../Make.settings
 
 UTILS = $(IGMKCODE)
-OBJS = $(IGMKCODE_OBJ)
+OBJ = $(IGMKCODE_OBJ)
+
+PYTHON_SCRIPTS = record-sends clearID writeLCD
 
 IGMKCODE = igmkcode
 IGMKCODE_OBJ = igmkcode.o
 
-all: $(UTILS)
+all: $(UTILS) $(PYTHON_SCRIPTS)
 
 %.o: $(srcdir)/%.c Makefile
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
@@ -35,12 +37,15 @@ uninstall:
 
 .PHONY: clean
 clean:
-	$(RM) -f *~ $(UTILS) $(OBJS)
+	$(RM) -f *~ $(UTILS) $(OBJ) $(PYTHON_SCRIPTS)
 
 .PHONY: distclean
 distclean: clean
 	$(RM) -f Makefile
 
-
-Makefile: ../config.status $(srcdir)/Makefile.in $(top_srcdir)/Make.settings.in
+$(PYTHON_SCRIPTS): ../config.status
 	cd .. && $(SHELL) ./config.status
+
+Makefile: ../config.status $(srcdir)/Makefile.in
+	cd .. && $(SHELL) ./config.status
+

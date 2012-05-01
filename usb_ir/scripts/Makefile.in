@@ -1,0 +1,13 @@
+
+PYTHON_SCRIPTS = mode2-translator send-loop serial-test
+
+all: $(PYTHON_SCRIPTS)
+install: all
+
+clean:
+	$(RM) $(PYTHON_SCRIPTS)
+distclean:
+	$(RM) Makefile
+
+$(PYTHON_SCRIPTS): ../config.status
+	cd .. && $(SHELL) ./config.status

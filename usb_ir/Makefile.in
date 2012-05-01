@@ -24,7 +24,7 @@ endif
 LIBNAME_A = lib$(IGUANAIR).a
 
 .PHONY: all
-all: $(OSSUPPORT) libs igclient igdaemon drivers utils
+all: $(OSSUPPORT) libs igclient igdaemon drivers utils scripts
 igclient igdaemon: $(LIBNAME)
 
 COMMON = support.o compat-unix.o
@@ -89,53 +89,53 @@ driver.o: $(srcdir)/driver.c Makefile $(top_srcdir)/iguanaIR.h
 # need a special dependency for config.h
 compat-unix.o: compat-unix.c config.h
 
-.PHONY: drivers-clean utils-clean reflasher-clean packaging-clean
-$(OSSUPPORT_CLEAN) drivers-clean utils-clean reflasher-clean packaging-clean:
+.PHONY: drivers-clean utils-clean scripts-clean reflasher-clean packaging-clean
+$(OSSUPPORT_CLEAN) drivers-clean utils-clean scripts-clean reflasher-clean packaging-clean:
 	$(MAKE) -C $(patsubst %-clean,%,$@) clean
 
-.PHONY: drivers-distclean utils-distclean reflasher-distclean packaging-distclean
-$(OSSUPPORT_DISTCLEAN) drivers-distclean utils-distclean reflasher-distclean packaging-distclean:
+.PHONY: drivers-distclean utils-distclean scripts-distclean reflasher-distclean packaging-distclean
+$(OSSUPPORT_DISTCLEAN) drivers-distclean utils-distclean scripts-distclean reflasher-distclean packaging-distclean:
 	$(MAKE) -C $(patsubst %-distclean,%,$@) distclean
 
-.PHONY: drivers-install utils-install reflasher-install
-$(OSSUPPORT_INSTALL) drivers-install utils-install reflasher-install:
+.PHONY: drivers-install utils-install scripts-install reflasher-install
+$(OSSUPPORT_INSTALL) drivers-install utils-install scripts-install reflasher-install:
 	$(MAKE) -C $(patsubst %-install,%,$@) install
 
-.PHONY: uninstall-utils uninstall-reflasher
-$(OSSUPPORT_UNINSTALL) drivers-uninstall utils-uninstall reflasher-uninstall:
+.PHONY: drivers-uninstall utils-uninstall scripts-uninstall reflasher-uninstall
+$(OSSUPPORT_UNINSTALL) drivers-uninstall utils-uninstall scripts-uninstall reflasher-uninstall:
 	$(MAKE) -C $(patsubst %-uninstall,%,$@) uninstall
+
+PYTHON = @PYTHON@
 
 # NOTE: I would rather use PYTHON_VERSION, but it doesn't work
 
-ifneq (@PYTHON_CPPFLAGS@,)
+ifneq ($(PYTHON),)
 all: _iguanaIR.$(PYTHON_DYNMOD_EXT)
 install: install-python
 
 .PHONY: install-python
 install-python:
-	$(INSTALL) -d $(DESTDIR)@PYTHON_SITE_PKG@
-	$(INSTALL_DYNLIB) _iguanaIR.$(PYTHON_DYNMOD_EXT) $(DESTDIR)@PYTHON_SITE_PKG@/_iguanaIR.$(PYTHON_DYNMOD_EXT)
-	$(INSTALL_DATA) iguanaIR.py $(DESTDIR)@PYTHON_SITE_PKG@/iguanaIR.py
+	$(PYTHON) setup.py install --root $(DESTDIR)/
 
 .PHONY: uninstall-python
 uninstall-python:
 	$(RM) $(DESTDIR)@PYTHON_SITE_PKG@/_iguanaIR.$(PYTHON_DYNMOD_EXT)
 	$(RM) $(DESTDIR)@PYTHON_SITE_PKG@/iguanaIR.py
 
-iguanaIR_wrap.c iguanaIR.py: $(srcdir)/iguanaIR.i $(srcdir)/iguanaIR.h Makefile
-	$(SWIG) @PYTHON_CPPFLAGS@ -python -outcurrentdir -I$(srcdir) $(<)
+# We are using distutils to build the extension, but we need to copy the
+# input file because distutils mess with the source tree.
+setup.py: $(srcdir)/setup.py.in config.status
+	./config.status
+iguanaIR.i: $(srcdir)/iguanaIR.i.in config.status
+	./config.status
 
-iguanaIR_wrap.o: iguanaIR_wrap.c Makefile
-#	$(CC) -c $(CPPFLAGS) @PYTHON_CPPFLAGS@ $(CFLAGS) -Wno-strict-aliasing -Wno-unused -Wno-implicit-function-declaration -Wno-long-long $< -o $@
-	$(CC) -c $(CPPFLAGS) @PYTHON_CPPFLAGS@ $(CFLAGS) -Wno-missing-field-initializers -Wno-unused -Wno-long-long -Wno-strict-aliasing $< -o $@
-
-_iguanaIR.$(PYTHON_DYNMOD_EXT): iguanaIR_wrap.o
-	$(CC) $(LDFLAGS) @PYTHON_LDFLAGS@ $(DYNLIB_FLAGS) $^ $(LIBNAME) -o $@
+_iguanaIR.$(PYTHON_DYNMOD_EXT): setup.py iguanaIR.i
+	$(PYTHON) setup.py build
 endif
 
 # change ownership unless we're building an rpm
 ifeq ($(RPM_OS)$(DARWIN),)
-  SETOWNER=--o iguanair --g iguanair
+  SETOWNER=-o iguanair -g iguanair
 install: adduser
 .PHONY: adduser
 adduser:
@@ -160,7 +160,7 @@ install-symlink:
 endif
 
 .PHONY: install
-install: all $(OSSUPPORT_INSTALL) drivers-install utils-install reflasher-install
+install: all $(OSSUPPORT_INSTALL) drivers-install utils-install scripts-install reflasher-install
 	$(INSTALL) -d $(DESTDIR)/$(bindir)
 	$(INSTALL_PROGRAM) igclient $(DESTDIR)/$(bindir)/igclient
 	$(INSTALL_PROGRAM) igdaemon $(DESTDIR)/$(bindir)/igdaemon
@@ -174,14 +174,15 @@ ifndef DARWIN
 	$(INSTALL_DATA) $(srcdir)/iguanaIR.init $(DESTDIR)/etc/init.d/iguanaIR
 	$(INSTALL) -d $(DESTDIR)/etc/default/iguanaIR
 	$(INSTALL_DATA) $(srcdir)/iguanaIR.options $(DESTDIR)/etc/default/iguanaIR
+	$(INSTALL) -d $(DESTDIR)/lib/udev/rules.d
 	$(INSTALL_DATA) $(srcdir)/udev/iguanaIR.rules \
 	                      $(DESTDIR)/lib/udev/rules.d/80-iguanaIR.rules
-	$(INSTALL) -d -m 755 $(SETOWNER) -d $(DESTDIR)/lib/udev/devices/iguanaIR
-	$(INSTALL) -d -m 755 $(SETOWNER) -d $(DESTDIR)/dev/iguanaIR
+	-$(INSTALL) -d -m 755 $(SETOWNER) -d $(DESTDIR)/lib/udev/devices/iguanaIR
+	-$(INSTALL) -d -m 755 $(SETOWNER) -d $(DESTDIR)/dev/iguanaIR
 endif
 
 .PHONY: uninstall
-uninstall: $(OSSUPPORT_UNINSTALL) drivers-uninstall utils-uninstall reflasher-uninstall
+uninstall: $(OSSUPPORT_UNINSTALL) drivers-uninstall utils-uninstall scripts-uninstall reflasher-uninstall
 	$(RM) $(DESTDIR)/Library/LaunchDaemons/net.iguanaworks.igdaemon.plist
 	/etc/init.d/iguanaIR stop || true
 	$(RM) $(DESTDIR)/etc/init.d/iguanaIR
@@ -198,14 +199,16 @@ uninstall: $(OSSUPPORT_UNINSTALL) drivers-uninstall utils-uninstall reflasher-un
 	$(RM)r $(DESTDIR)$(libdir)/iguanaIR
 	$(RM)r $(DESTDIR)$(libdir)/iguanaIR-reflasher
 
-clean: $(OSSUPPORT_CLEAN) drivers-clean utils-clean reflasher-clean
+clean: $(OSSUPPORT_CLEAN) drivers-clean utils-clean scripts-clean reflasher-clean
 	$(RM) *iguanaIR.$(PYTHON_DYNMOD_EXT) iguanaIR.py* iguanaIR_wrap.c iguanaIR_wrap.o
 	$(RM) *.o $(LIBNAME_A) $(LIBNAME) *iguanaIR.$(DYNLIB_EXT) igdaemon igclient config.log
+	$(RM) -r build
 
 .PHONY: distclean
-distclean: clean $(OSSUPPORT_DISTCLEAN) drivers-distclean utils-distclean reflasher-distclean # packaging-distclean
+distclean: clean $(OSSUPPORT_DISTCLEAN) drivers-distclean utils-distclean scripts-distclean reflasher-distclean # packaging-distclean
 	$(RM) *~
-	$(RM) Makefile Make.settings config.h config.status config.status.* autoconf/stamp-h
+	$(RM) Makefile Make.settings setup.py iguanaIR.i
+	$(RM) config.h config.status config.status.* autoconf/stamp-h
 	$(RM) darwin/Makefile
 
 .PHONY: cleanest
