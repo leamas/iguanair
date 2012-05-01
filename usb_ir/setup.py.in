@@ -1,0 +1,22 @@
+#! /usr/bin/python
+
+"""
+setup.py file for iguanaIR
+"""
+
+from distutils.core import setup, Extension
+
+iguanaIR_module = Extension('_iguanaIR', ['iguanaIR.i'],
+			     include_dirs=['@srcdir@'],
+			      swig_opts=['-outcurrentdir', '-I@srcdir@'],
+			   )
+
+setup (name = 'iguanaIR',
+       version = '0.1',
+       author = "IguanaWorks",
+       url = "http://www.iguanaworks.net/",
+       description = """Python bindings for libiguanaIR""",
+       ext_modules = [iguanaIR_module],
+       py_modules = ["iguanaIR"],
+       )
+
