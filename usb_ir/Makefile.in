@@ -12,13 +12,15 @@ CFLAGS += -fvisibility=hidden -DIGUANAIR_EXPORTS
 
 LIBNAME_OBJ = iguanaIR.o $(COMMON) $(COMMON_COM)
 
+LIBNAME = lib$(IGUANAIR).$(DYNLIB_EXT)
+
 ifdef DARWIN
-  LIBNAME = lib$(IGUANAIR).0.$(DYNLIB_EXT)
-  LINKARGS = -Wl,-dylib_current_version,0.1.0,-dylib_compatibility_version,0.1.0 -install_name $(DESTDIR)/$(libdir)/$(LIBNAME)
+  LIBNAME_VERSIONED = lib$(IGUANAIR).0.$(DYNLIB_EXT)
+  LINKARGS = -Wl,-dylib_current_version,0.1.0,-dylib_compatibility_version,0.1.0 -install_name $(libdir)/$(LIBNAME_VERSIONED)
   EXPORTARGS =
 else
-  LIBNAME = lib$(IGUANAIR).$(DYNLIB_EXT).0
-  LINKARGS = -Wl,-soname=$(LIBNAME),--version-script=$(srcdir)/ig.ver
+  LIBNAME_VERSIONED = lib$(IGUANAIR).$(DYNLIB_EXT).0
+  LINKARGS = -Wl,-soname=$(LIBNAME_VERSIONED),--version-script=$(srcdir)/ig.ver
   EXPORTARGS = -Wl,-export-dynamic
 endif
 LIBNAME_A = lib$(IGUANAIR).a
@@ -33,10 +35,16 @@ COMMON_COM = dataPackets.o pipes.o
 .PHONY: libs
 libs: $(LIBNAME) $(LIBNAME_A)
 
-$(LIBNAME): $(LIBNAME_OBJ)
+$(LIBNAME): $(LIBNAME_VERSIONED)
+	ln -fs $< $@
+$(LIBNAME_VERSIONED): $(LIBNAME_OBJ)
 	$(CC) $(LINKARGS) $(LDFLAGS) $(DYNLIB_FLAGS) $^ -o $@
 $(LIBNAME_A): $(LIBNAME_OBJ)
+ifndef DARWIN
 	ar cr $@ $^
+else
+	libtool -o $@ -static $^
+endif
 
 .PHONY: drivers utils
 drivers utils:

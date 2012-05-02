@@ -8,6 +8,8 @@ from distutils.core import setup, Extension
 
 iguanaIR_module = Extension('_iguanaIR', ['iguanaIR.i'],
 			     include_dirs=['@srcdir@'],
+			     libraries=['iguanaIR'],
+			     library_dirs=['@top_builddir@'],
 			      swig_opts=['-outcurrentdir', '-I@srcdir@'],
 			   )
 

@@ -37,6 +37,9 @@ DYNMOD_EXT = @DYNMOD_EXT@
 PYTHON_DYNMOD_EXT = $(DYNMOD_EXT)
 
 ifeq ($(patsubst darwin%,darwin,$(host_os)),darwin)
+   ARCHFLAGS = -arch i386 -arch x86_64	# Totally not portable!
+   CFLAGS += $(ARCHFLAGS)
+   LDFLAGS += $(ARCHFLAGS)
    OSSUPPORT = darwin
    DARWIN = 1
    PATH = $(shell getconf PATH):/usr/local/bin:/opt/local/bin:/sw/bin
