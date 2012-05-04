@@ -1,4 +1,11 @@
 
+top_srcdir = @top_srcdir@
+srcdir = @srcdir@
+top_builddir = @top_builddir@
+builddir = @builddir@
+
+SED = @SED@
+
 PYTHON_SCRIPTS = mode2-translator send-loop serial-test
 
 all: $(PYTHON_SCRIPTS)
@@ -9,5 +16,9 @@ clean:
 distclean:
 	$(RM) Makefile
 
-$(PYTHON_SCRIPTS): ../config.status
+%: $(srcdir)/%.in
+	$(SED) 's,@''PYTHON@,@PYTHON@,' $< >$@ && chmod +x $@
+
+Makefile: ../config.status $(srcdir)/Makefile.in
 	cd .. && $(SHELL) ./config.status
+

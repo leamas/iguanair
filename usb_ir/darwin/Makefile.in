@@ -18,7 +18,7 @@ CFLAGS += -fvisibility=hidden -DIGUANAIR_EXPORTS
 all: Makefile $(OBJ) $(IGDAEMON_PLIST)
 
 $(IGDAEMON_PLIST): $(srcdir)/$(IGDAEMON_PLIST).in
-	sed s',@''bindir@,$(bindir),' $< >$@
+	$(SED) s',@''bindir@,$(bindir),' $< >$@
 
 Makefile: ../config.status $(srcdir)/Makefile.in $(top_srcdir)/Make.settings.in
 	cd .. && $(SHELL) ./config.status

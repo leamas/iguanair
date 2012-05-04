@@ -19,6 +19,9 @@ all: $(UTILS) $(PYTHON_SCRIPTS)
 %.o: $(srcdir)/%.c Makefile
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
+%: $(srcdir)/%.in
+	$(SED) 's,@''PYTHON@,@PYTHON@,' $< >$@ && chmod +x $@
+
 $(IGMKCODE): $(IGMKCODE_OBJ)
 	$(CC) $(LDFLAGS) $^ -o $@
 
@@ -42,9 +45,6 @@ clean:
 .PHONY: distclean
 distclean: clean
 	$(RM) -f Makefile
-
-$(PYTHON_SCRIPTS): ../config.status
-	cd .. && $(SHELL) ./config.status
 
 Makefile: ../config.status $(srcdir)/Makefile.in
 	cd .. && $(SHELL) ./config.status

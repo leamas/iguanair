@@ -13,6 +13,7 @@ AC_CONFIG_HEADER([config.h])
 AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
+AC_PROG_SED
 
 DYNLIB_EXT=so
 DYNMOD_EXT=so
@@ -221,5 +222,5 @@ fi
 
 # Output some files
 AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile darwin/Makefile utils/Makefile scripts/Makefile reflasher/Makefile packaging/Makefile])
-AC_OUTPUT([autoconf/stamp-h setup.py iguanaIR.i utils/record-sends utils/clearID utils/writeLCD scripts/mode2-translator scripts/serial-test scripts/send-loop])
+AC_OUTPUT([autoconf/stamp-h iguanaIR.i setup.py])
 

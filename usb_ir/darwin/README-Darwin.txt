@@ -23,6 +23,11 @@ flags in Build Phases.
 The Xcode project builds against static librares so that one can redistribute
 the Iguana IR products without worrying about their dependencies.
 
+The Makefiles use the variable $(ARCHFLAGS) to select which architectures to
+build for. By default, ARCHFLAGS is set to "-arch i386 -arch x86_64" (very
+portable as you can tell). This means that the libraries one links against
+must match, or the flags must be changed.
+
 To build with the Autoconf framework, one simply needs to run the ./configure
 script for configuration. As usual, non standard directories need to be
 provided to configure, so a Darwin port installation could be configured
@@ -31,6 +36,14 @@ through:
   % CPPFLAGS=-I/opt/local/include LDFLAGS=-L/opt/local/lib ./configure -prefix=/opt/local
 
 if one wanted to install in /opt/local.
+
+* CAVEATS
+
+Because there is no concept of a system-wide dynamic library search path in
+Darwin, one must install the libraries and Python extension (if built) before
+one can use the command line tools and Python scripts. If an installation
+has already been made, the installed libraries, and not the ones just built,
+are used even with the tools and scripts in the build directory.
 
 * DRIVER
 

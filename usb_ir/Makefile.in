@@ -6,8 +6,6 @@ builddir = @builddir@
 
 include Make.settings
 
-SWIG = @SWIG@
-
 CFLAGS += -fvisibility=hidden -DIGUANAIR_EXPORTS
 
 LIBNAME_OBJ = iguanaIR.o $(COMMON) $(COMMON_COM)
