@@ -54,11 +54,19 @@ bool findDriverDir(char *path)
     return false;
 }
 
+#elif DARWIN
+
+bool findDriverDir(char *path)
+{
+	*path = 0;
+	return false;
+}
+
 #else
 
 bool findDriverDir(char *path)
 {
-	path = 0;
+	*path = 0;
 	return false;
 }
 

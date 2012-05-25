@@ -221,6 +221,6 @@ if test x$USE_PYTHON != xno; then
 fi
 
 # Output some files
-AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile darwin/Makefile utils/Makefile scripts/Makefile reflasher/Makefile packaging/Makefile])
+AC_CONFIG_FILES([Make.settings Makefile drivers/Makefile darwin/Makefile utils/Makefile scripts/Makefile reflasher/Makefile packaging/Makefile irconv/Makefile])
 AC_OUTPUT([autoconf/stamp-h iguanaIR.i setup.py])
 

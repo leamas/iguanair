@@ -432,9 +432,8 @@ static bool updateDeviceList(deviceList *devList)
                         devPos->busIndex != busIndex ||
                         devPos->devIndex != libusb_get_device_address(dev))
                     {
-			int config = -1;
-
                         int retval;
+                        int config;
                         bool success = false;
                         usbDevice *newDev = NULL;
                         newDev = (usbDevice*)malloc(sizeof(usbDevice));
