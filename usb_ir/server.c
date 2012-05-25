@@ -101,9 +101,19 @@ deviceList* initServer()
     if (! findDriver(srvSettings.driverDir,
                      srvSettings.preferred, srvSettings.onlyPreferred))
         message(LOG_ERROR, "failed to find a loadable driver layer.\n");
-    else if ((list = prepareDeviceList(iguanaUsbIds, srvSettings.devFunc)) == NULL)
-        message(LOG_ERROR, "failed to initialize the device list.\n");
+    else if (! initializeDriver())
+        message(LOG_ERROR, "failed to initialize the loadable driver layer.\n");
+    else
+	{
+	    setDriverLogLevel(getLogLevel());
+
+	    if ((list = prepareDeviceList(iguanaUsbIds, srvSettings.devFunc)) == NULL)
+		message(LOG_ERROR, "failed to initialize the device list.\n");
+	}
 
     return list;
 }
 
+void cleanupServer() {
+    cleanupDriver();
+}

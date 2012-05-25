@@ -46,6 +46,7 @@ static void quitHandler(int UNUSED(sig))
 printf("CLOSE %d %s(%d)\n", commPipe[WRITE], __FILE__, __LINE__);
 #endif
     closePipe(commPipe[WRITE]);
+    cleanupServer();
 }
 
 static void scanHandler(int UNUSED(sig))
@@ -122,6 +123,7 @@ printf("OPEN %d %s(%d)\n", commPipe[1], __FILE__, __LINE__);
 
         /* wait for all the workers to finish */
         reapAllChildren(list, &srvSettings.devSettings);
+	cleanupServer();
     }
 }
 
@@ -188,6 +190,8 @@ int main(int argc, const char **argv)
     bool runAsDaemon = true;
     const char *pidFile = NULL, **leftOvers;
     poptContext poptCon;
+
+    setLogLevel(LOG_NORMAL);
 
     /* initialize the server-level settings */
     initServerSettings(startWorker);
@@ -515,19 +519,82 @@ void listenToClients(iguanaDev *idev,
             }
         }
 
-        setAlias(idev->usbDev->id, NULL);
+        removeAllAliases(idev);
         stopListening(listener, name);
     }
 }
 
-void setAlias(unsigned int id, const char *alias)
+/* Alias management functions (declared and used by client-interface) */
+
+static void makeSymlink(const char *name, const char *alias)
+{
+    char path[PATH_MAX], *slash, *aliasCopy;
+    struct stat st;
+
+    aliasCopy = strdup(alias);
+    while(1)
+        {
+            slash = strchr(aliasCopy, '/');
+            if (slash == NULL)
+                break;
+            slash[0] = '|';
+        }
+    socketName(aliasCopy, path, PATH_MAX);
+    free(aliasCopy);
+    
+    if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode))
+	unlink(path);
+    symlink(name, path);
+}
+
+/* support for location IDs */
+typedef char location_id_str[9];
+static void makeLocationIdStr(location_id_str str, uint32_t location)
+{
+    sprintf(str, "%02X%02X%02X%02X", location & 0xff, (location >> 8) & 0xff, (location >> 16) & 0xff, (location >> 24) & 0xff);
+}
+
+static void setAliases(iguanaDev *idev, const char *alias, bool aliasLocation)
 {
     /* find the alias and nuke it if it is a link to the name */
     DIR_HANDLE dir = NULL;
     char buffer[PATH_MAX], name[4];
+    uint32_t locationId;
+    location_id_str locationIdStr;
+    bool locationIdAliased = false;
 
     /* prepare the name string */
-    sprintf(name, "%d", id);
+    sprintf(name, "%d", idev->usbDev->id);
+    getDeviceLocationId(idev->usbDev, &locationId); /* get the platform's location ID */
+    if (locationId)
+    {
+	makeLocationIdStr(locationIdStr, locationId);
+    } else
+    {
+	locationIdStr[0] = '\0';
+    }
+
+    {
+	char locMsg[64];
+	if (locationId)
+        {
+	    uint8_t loc[2];
+	    getDeviceLocation(idev->usbDev, loc); /* get the driver's location (bus and address) so we can display the address */
+
+	    sprintf(locMsg, " (a.k.a. %s for location ID 0x%08x / %d)", locationIdStr, locationId, loc[1]);
+	}
+	else
+	    *locMsg = '\0';
+
+	if (alias)
+	{
+	    message(LOG_DEBUG, "Aliasing %s to device %s%s.\n", alias, name, locMsg);
+	}
+	else 
+	{
+	    message(LOG_DEBUG, "Cleaning up aliasing for device %s%s.\n", name, locMsg);
+	}
+    }
 
     /* look through all symlinks in the directory and delete links to
        name */
@@ -537,35 +604,51 @@ void setAlias(unsigned int id, const char *alias)
         char ptr[PATH_MAX], buf[PATH_MAX];
         int length;
 
-        sprintf(buf, "%s%s", IGSOCK_NAME, buffer);
-        length = readlink(buf, ptr, PATH_MAX - 1);
-        if (length > 0)
-        {
-            ptr[length] = '\0';
-            if (strcmp(name, ptr) == 0)
-                unlink(buf);
-        }
+	sprintf(buf, "%s%s", IGSOCK_NAME, buffer);
+	length = readlink(buf, ptr, PATH_MAX - 1);
+	if (length > 0)
+	    {
+		ptr[length] = '\0';
+		if (strcmp(name, ptr) == 0)
+		    {
+			char *bufp;
+
+			/* do not remove a location alias unless it does not point to the device */
+			if (aliasLocation && strcmp(buffer, locationIdStr) == 0) {
+			    locationIdAliased = true;
+			    continue;
+			}
+
+			bufp = strrchr(buf, '/');
+			if (bufp)
+			    ++bufp;
+			else
+			    bufp = buf;
+
+			message(LOG_DEBUG, "Unaliasing  %s -> %s.\n", bufp, ptr);
+			unlink(buf);
+		    }
+	    }
+    }
+    
+    /* create a new symlink from location to name if needed */
+    if (aliasLocation && *locationIdStr && !locationIdAliased) {
+	makeSymlink(name, locationIdStr);
     }
 
     /* create a new symlink from alias to name */
     if (alias != NULL)
     {
-        char path[PATH_MAX], *slash, *aliasCopy;
-        struct stat st;
-
-        aliasCopy = strdup(alias);
-        while(1)
-        {
-            slash = strchr(aliasCopy, '/');
-            if (slash == NULL)
-                break;
-            slash[0] = '|';
-        }
-        socketName(aliasCopy, path, PATH_MAX);
-        free(aliasCopy);
-
-        if (lstat(path, &st) == 0 && S_ISLNK(st.st_mode))
-            unlink(path);
-        symlink(name, path);
+	makeSymlink(name, alias);
     }
+}
+
+void setAlias(iguanaDev *idev, const char *alias)
+{
+    setAliases(idev, alias, true);
+}
+
+void removeAllAliases(iguanaDev *idev)
+{
+    setAliases(idev, NULL, false);
 }

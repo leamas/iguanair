@@ -155,6 +155,27 @@ static void setError(usbDevice *handle, char *error, int usbError)
     }
 }
 
+static void setDriverLogLevel(int level)
+{
+    int usbDebugLevel = 0;
+
+    setLogLevel(level);
+
+    /* map the current log level to libusb debug level */
+    level -= LOG_NORMAL;
+    if (level > 3) {
+        usbDebugLevel = 3;
+    } else if (level > 1) {
+        usbDebugLevel = 2;
+    } else if (level > -1) {
+        usbDebugLevel = 1;
+    } else {
+        usbDebugLevel = 0;
+    }
+
+    libusb_set_debug(NULL, usbDebugLevel);
+}
+
 static void printError(int level, char *msg, deviceInfo *info)
 {
     usbDevice *handle = handleFromInfoPtr(info);
@@ -287,6 +308,76 @@ static bool findId(itemHeader *item, void *userData)
     return true;
 }
 
+#ifdef __APPLE__
+
+#include <IOKIt/usb/USB.h>
+
+#define usbi_mutex_t			pthread_mutex_t
+
+/* return the location ID of the device by peeking into libusb's internals
+   for the host operating system (yes it's that bad and will stay so until
+   libusbx 2.0 offers APIs for such data) */
+static int xlibusb_get_device_location_id(libusb_device *dev, uint32_t *locationId)
+{
+    /* private structures, taken from darwin_usb.h and truncated */
+    struct darwin_device_priv {
+	IOUSBDeviceDescriptor dev_descriptor;
+	UInt32                location;
+    };
+
+    /* taken from libusbi.h */
+    struct list_head {
+        struct list_head *prev, *next;
+    };
+
+    struct libusb_device {
+        /* lock protects refcnt, everything else is finalized at initialization
+         * time */
+        usbi_mutex_t lock;
+        int refcnt;
+
+        struct libusb_context *ctx;
+
+        uint8_t bus_number;
+        uint8_t device_address;
+        uint8_t num_configurations;
+        enum libusb_speed speed;
+
+        struct list_head list;
+        unsigned long session_data;
+        unsigned char os_priv[0];
+    };
+
+    struct darwin_device_priv *dpriv = (struct darwin_device_priv *) ((struct libusb_device *) dev)->os_priv;
+    *locationId = dpriv->location;
+
+    return 0;
+}
+
+#else
+
+/* return an error indicating that we do not know how to obtain a device's
+   location ID on this platform. */
+static int xlibusb_get_device_location_id(libusb_device *dev, uint32_t *locationId)
+{
+    return -1;
+}
+
+#endif
+
+static bool initializeDriver()
+{
+    return libusb_init(NULL) == 0;
+}
+
+static void cleanupDriver()
+{
+    /* We should be calling libusb_exit but that introduces crashes. */
+#if 0
+    libusb_exit(NULL);
+#endif
+}
+
 static bool updateDeviceList(deviceList *devList)
 {
     usbDeviceList *list = (usbDeviceList*)devList;
@@ -294,9 +385,6 @@ static bool updateDeviceList(deviceList *devList)
     unsigned int pos, count = 0, newCount = 0;
     usbDevice *devPos;
     ssize_t listSize, listPos;
-
-    /* initialize usb TODO: should call libusb_exit at the end*/
-    libusb_init(NULL);
 
     /* the next two return counts of busses and devices respectively */
     listSize = libusb_get_device_list(NULL, &usbList);
@@ -344,6 +432,8 @@ static bool updateDeviceList(deviceList *devList)
                         devPos->busIndex != busIndex ||
                         devPos->devIndex != libusb_get_device_address(dev))
                     {
+			int config = -1;
+
                         int retval;
                         bool success = false;
                         usbDevice *newDev = NULL;
@@ -369,7 +459,7 @@ static bool updateDeviceList(deviceList *devList)
                         /* open a handle to the usb device */
                         if ((retval = libusb_open(dev, &newDev->device)) != LIBUSB_SUCCESS)
                             setError(newDev, "Failed to open usb device", retval);
-                        else if ((retval = libusb_set_configuration(newDev->device, 1)) < 0)
+                        else if ((retval = libusb_get_configuration(newDev->device, &config) < 0) || (config != 1 && (retval = libusb_set_configuration(newDev->device, 1)) < 0))
                             setError(newDev, "Failed to set device configuration", retval);
 /*                        else if (! dev->config)
                           setError(newDev, "Failed to receive device descriptors");*/
@@ -542,23 +632,36 @@ static void getDeviceLocation(deviceInfo *info, uint8_t loc[2])
     loc[1] = handle->devIndex;
 }
 
-driverImpl impl_libusbpre1 = {
+static void getDeviceLocationId(deviceInfo *info, uint32_t *locationId)
+{
+    usbDevice *handle = handleFromInfoPtr(info);
+    libusb_device *dev = libusb_get_device(handle->device);
+    *locationId = 0;
+    xlibusb_get_device_location_id(dev, locationId);
+}
+
+driverImpl impl_libusb = {
+    initializeDriver,
+    cleanupDriver,
     findDeviceEndpoints,
     interruptRecv,
     interruptSend,
     clearHalt,
     resetDevice,
     getDeviceLocation,
+    getDeviceLocationId,
     releaseDevice,
     freeDevice,
     prepareDeviceList,
     updateDeviceList,
     stopDevices,
     releaseDevices,
+    setDriverLogLevel,
     printError
 };
 
 driverImpl* getImplementation()
 {
-    return &impl_libusbpre1;
+    return &impl_libusb;
 }
+

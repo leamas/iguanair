@@ -455,13 +455,13 @@ void getID(iguanaDev *idev)
 
     if (! deviceTransaction(idev, &request, &response))
     {
-        setAlias(idev->usbDev->id, NULL);
+        setAlias(idev, NULL);
         message(LOG_INFO,
                 "Failed to get id.  Device may not have one assigned.\n");
     }
     else
     {
-        setAlias(idev->usbDev->id, (char*)response->data);
+        setAlias(idev, (char*)response->data);
         freeDataPacket(response);
     }
 }
@@ -734,29 +734,30 @@ bool reapAllChildren(deviceList *list, deviceSettings *settings)
     x = stopDevices(list);
     for(; x > 0; x--)
     {
-        void *exitval;
-        int result;
-        THREAD_PTR child;
-
-        /* NOTE: using 2*recv timeout to allow readers to exit. */
-        result = readPipeTimed(settings->childPipe[READ],
-                               (char*)&child, sizeof(THREAD_PTR),
-                               2 * settings->recvTimeout);
-        /* no one ready */
-        if (result == 0)
-            break;
-        /* try to join with the worker thread */
-        else if (result != sizeof(THREAD_PTR))
+	void *exitval;
+	int result;
+	THREAD_PTR child;
+	
+	/* NOTE: using 2*recv timeout to allow readers to exit. */
+	result = readPipeTimed(settings->childPipe[READ],
+			       (char*)&child, sizeof(THREAD_PTR),
+			       2 * settings->recvTimeout);
+	/* no one ready */
+	if (result == 0)
+	    break;
+	/* try to join with the worker thread */
+	else if (result != sizeof(THREAD_PTR))
         {
-            message(LOG_ERROR, "failed while reaping worker thread.\n");
-            return false;
-        }
-        else
-        {
-            joinThread(child, &exitval);
-            message(LOG_DEBUG, "Reaped child: %p\n", child);
-        }
+	    message(LOG_ERROR, "failed while reaping worker thread.\n");
+	    return false;
+	}
+	else
+	{
+	    joinThread(child, &exitval);
+	    message(LOG_DEBUG, "Reaped child: %p\n", child);
+	}
     }
+
     releaseDevices(list);
 
     return true;

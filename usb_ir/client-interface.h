@@ -44,7 +44,8 @@ void listenToClients(iguanaDev *idev,
                      handleReaderFunc handleReader,
                      clientConnectedFunc clientConnected,
                      handleClientFunc handleClient);
-void setAlias(unsigned int id, const char *alias);
+void setAlias(iguanaDev *idev, const char *alias);
+void removeAllAliases(iguanaDev *idev);
 
 /* the worker thread has to check the id at startup */
 void getID(iguanaDev *idev);

@@ -21,6 +21,10 @@ bool findDriverDir(char *path);
 /* remaining function calls are illegal until this returns true */
 bool findDriver(const char *path, const char **preferred, bool onlyPreferred);
 
+/* initialization and cleanup */
+bool initializeDriver();
+void cleanupDriver();
+
 /* wrapped usb methods */
 bool findDeviceEndpoints(deviceInfo *info, int *maxPacketSize);
 int interruptRecv(deviceInfo *info, void *buffer, int bufSize, int timeout);
@@ -30,6 +34,7 @@ int resetDevice(deviceInfo *info);
 
 /* miscellaneous helper functions */
 void getDeviceLocation(deviceInfo *info, uint8_t loc[2]);
+void getDeviceLocationId(deviceInfo *info, uint32_t *locationId);
 
 /* release a single device (during destruction) */
 void releaseDevice(deviceInfo *info);
@@ -42,6 +47,7 @@ unsigned int stopDevices(deviceList *devList);
 unsigned int releaseDevices(deviceList *devList);
 
 /* dump errors to a stream */
+void setDriverLogLevel(int level);
 void printError(int level, char *msg, deviceInfo *info);
 
 #endif

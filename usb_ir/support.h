@@ -53,8 +53,9 @@ enum
 };
 
 /* functions for messages (logging) */
-void changeLogLevel(int difference);
-void setLogLevel(int value);
+SUPPORT_API void changeLogLevel(int difference);
+SUPPORT_API void setLogLevel(int value);
+SUPPORT_API int getLogLevel();
 void openLog(const char *filename);
 
 /* exported by the igdaemon executable to allow dlopen'd drivers to

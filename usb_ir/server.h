@@ -45,6 +45,7 @@ usbId iguanaUsbIds[];
 
 void initServerSettings(deviceFunc devFunc);
 deviceList* initServer();
+void cleanupServer();
 
 /* global settings object */
 extern serverSettings srvSettings;

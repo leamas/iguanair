@@ -152,6 +152,21 @@ bool findDriver(const char *path, const char **preferred, bool onlyPreferred)
     return false;
 }
 
+bool initializeDriver()
+{
+    return implementation->initializeDriver();
+}
+
+void cleanupDriver()
+{
+    if (implementation) implementation->cleanupDriver();
+}
+
+void setDriverLogLevel(int level)
+{
+    implementation->setDriverLogLevel(level);
+}
+
 void printError(int level, char *msg, deviceInfo *info)
 {
     implementation->printError(level, msg, info);
@@ -185,6 +200,11 @@ int resetDevice(deviceInfo *info)
 void getDeviceLocation(deviceInfo *info, uint8_t loc[2])
 {
     implementation->getDeviceLocation(info, loc);
+}
+
+void getDeviceLocationId(deviceInfo *info, uint32_t *locationId)
+{
+    implementation->getDeviceLocationId(info, locationId);
 }
 
 void releaseDevice(deviceInfo *info)

@@ -84,6 +84,27 @@ static void setError(usbDevice *handle, char *error)
     }
 }
 
+static void setDriverLogLevel(int level)
+{
+    int usbDebugLevel = 0;
+
+    setLogLevel(level);
+
+    /* map the current log level to libusb debug level */
+    level -= LOG_NORMAL;
+    if (level > 3) {
+        usbDebugLevel = 255;
+    } else if (level > 1) {
+        usbDebugLevel = 127
+    } else if (level > -1) {
+        usbDebugLevel = 63;
+    } else {
+        usbDebugLevel = 0;
+    }
+
+    usb_set_debug(usbDebugLevel);
+}
+
 static void printError(int level, char *msg, deviceInfo *info)
 {
     usbDevice *handle = handleFromInfoPtr(info);
@@ -216,6 +237,16 @@ static bool findId(itemHeader *item, void *userData)
     return true;
 }
 
+static bool initializeDriver()
+{
+    usb_init();
+    return true;
+}
+
+static void cleanupDriver()
+{
+}
+
 static bool updateDeviceList(deviceList *devList)
 {
     usbDeviceList *list = (usbDeviceList*)devList;
@@ -223,9 +254,6 @@ static bool updateDeviceList(deviceList *devList)
     struct usb_device *dev;
     unsigned int pos, count = 0, newCount = 0;
     usbDevice *devPos;
-
-    /* initialize usb */
-    usb_init();
 
     /* the next two return counts of busses and devices respectively */
     usb_find_busses();
@@ -458,19 +486,28 @@ static void getDeviceLocation(deviceInfo *info, uint8_t loc[2])
     loc[1] = handle->devIndex;
 }
 
+static void getDeviceLocationId(deviceInfo *info, uint32_t *locationId)
+{
+    *locationId = 0;	/* Location ID is not supported by this driver. */
+}
+
 driverImpl impl_libusbpre1 = {
+    initializeDriver,
+    cleanupDriver,
     findDeviceEndpoints,
     interruptRecv,
     interruptSend,
     clearHalt,
     resetDevice,
     getDeviceLocation,
+    getDeviceLocationId,
     releaseDevice,
     freeDevice,
     prepareDeviceList,
     updateDeviceList,
     stopDevices,
     releaseDevices,
+    setDriverLogLevel,
     printError
 };
 

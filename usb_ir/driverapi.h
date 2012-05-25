@@ -19,6 +19,10 @@
 
 typedef struct driverImpl
 {
+    /* initialization and cleanup */
+    bool (*initializeDriver)();
+    void (*cleanupDriver)();
+
     /* wrapped usb methods */
     bool (*findDeviceEndpoints)(deviceInfo *info, int *maxPacketSize);
     int (*interruptRecv)(deviceInfo *info,
@@ -30,6 +34,7 @@ typedef struct driverImpl
 
     /* miscellaneous helper functions */
     void (*getDeviceLocation)(deviceInfo *info, uint8_t loc[2]);
+    void (*getDeviceLocationId)(deviceInfo *info, uint32_t *locationId);
 
     /* release a single device (during destruction) */
     void (*releaseDevice)(deviceInfo *info);
@@ -42,6 +47,7 @@ typedef struct driverImpl
     unsigned int (*releaseDevices)(deviceList *devList);
 
     /* dump errors to stream */
+    void (*setDriverLogLevel)(int level);
     void (*printError)(int level, char *msg, deviceInfo *info);
 
 } driverImpl;
