@@ -1,0 +1,5 @@
+*.deb
+iguanair-d1a3474/
+iguanaIR-*-src.tar.gz
+*amd64.build
+*amd64.changes

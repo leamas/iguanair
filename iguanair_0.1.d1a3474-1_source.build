@@ -1,0 +1,47 @@
+ dpkg-buildpackage -rfakeroot -d -us -uc -S
+dpkg-buildpackage: info: source package iguanair
+dpkg-buildpackage: info: source version 0.1.d1a3474-1
+dpkg-buildpackage: info: source distribution unstable
+dpkg-buildpackage: info: source changed by Alec Leamas <leamas.alec@gmail.com>
+ dpkg-source --before-build iguanair-d1a3474
+ fakeroot debian/rules clean
+dh clean --with systemd 
+   debian/rules override_dh_auto_clean
+make[1]: Entering directory '/home/mk/iguanair-d1a3474/iguanair-d1a3474'
+dh_auto_clean
+rm -rf software/usb_ir/build
+rm -f software/usb_ir/config.h
+test -d software/lirc-drv-iguanair && \
+    make -C software/lirc-drv-iguanair clean || :
+make[2]: Entering directory '/home/mk/iguanair-d1a3474/iguanair-d1a3474/software/lirc-drv-iguanair'
+rm -f *.o *.so
+make[2]: Leaving directory '/home/mk/iguanair-d1a3474/iguanair-d1a3474/software/lirc-drv-iguanair'
+make[1]: Leaving directory '/home/mk/iguanair-d1a3474/iguanair-d1a3474'
+   dh_autoreconf_clean
+   dh_clean
+ dpkg-source -b iguanair-d1a3474
+dpkg-source: info: using source format '3.0 (quilt)'
+dpkg-source: info: building iguanair using existing ./iguanair_0.1.d1a3474.orig.tar.gz
+dpkg-source: info: building iguanair in iguanair_0.1.d1a3474-1.debian.tar.xz
+dpkg-source: info: building iguanair in iguanair_0.1.d1a3474-1.dsc
+ dpkg-genchanges --build=source >../iguanair_0.1.d1a3474-1_source.changes
+dpkg-genchanges: info: including full source code in upload
+ dpkg-source --after-build iguanair-d1a3474
+dpkg-source: info: unapplying 0015-FreeBSD-build-fixes.patch
+dpkg-source: info: unapplying 0014-build-Adjust-installation-paths-to-proper-Debian-FHS.patch
+dpkg-source: info: unapplying 0013-Add-missing-manpages.patch
+dpkg-source: info: unapplying 0012-build-cmake-Use-correct-permissions-when-installing.patch
+dpkg-source: info: unapplying 0011-lirc-drv-Fix-missing-linker-flag.patch
+dpkg-source: info: unapplying 0010-build-Remove-cmake-dist-generation.patch
+dpkg-source: info: unapplying 0009-build-enhance-cmake-make-dist-make-dist-script.patch
+dpkg-source: info: unapplying 0008-Handle-missing-git-version-info.patch
+dpkg-source: info: unapplying 0007-Add-systemd-support-29.patch
+dpkg-source: info: unapplying 0006-build-Refactor-make_version-to-clean-cmake-code.patch
+dpkg-source: info: unapplying 0005-Add-the-lirc-drv-iguanair-driver.patch
+dpkg-source: info: unapplying 0004-Add-a-service-file.patch
+dpkg-source: info: unapplying 0003-Update-make_version.sh-27.patch
+dpkg-source: info: unapplying 0002-build-Create-proper-soname-symlinks-25.patch
+dpkg-source: info: unapplying 0001-Remove-trailing-whitespace-and-add-a-gitignore.patch
+dpkg-buildpackage: info: full upload (original source is included)
+Now running lintian...
+Finished running lintian.
